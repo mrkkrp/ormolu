@@ -23,6 +23,7 @@ let
     inherit pkgs;
     ormolu = ormoluExe;
   };
+  ormoluLive = hsPkgs.projectCross.ghcjs.hsPkgs.ormolu-live.components.exes.ormolu-live;
 
   expectedFailures = [
     "Agda"
@@ -74,11 +75,8 @@ in {
       withHoogle = false;
       exactDeps = true;
     };
-    withOrmolu = hsPkgs.shellFor {
-      tools = { cabal = "latest"; };
-      withHoogle = false;
-      exactDeps = true;
-      buildInputs = [ormoluExe];
+    cabalAndOrmolu = pkgs.mkShell {
+      buildInputs = [ (hsPkgs.tool "cabal" "latest") ormoluExe ];
     };
   };
   hackage = ormolizedPackages false;
@@ -174,6 +172,25 @@ in {
     installPhase = ''
       mkdir "$out"
       find . -name '*.hs' -exec cp --parents {} $out \;
+    '';
+  };
+
+  ormolu-live.website = pkgs.stdenv.mkDerivation {
+    name = "ormolu-live-website";
+    src = pkgs.haskell-nix.haskellLib.cleanGit {
+      name = "ormolu-live";
+      src = ./.;
+      subDir = "www";
+    };
+    buildInputs = [ pkgs.closurecompiler ];
+    installPhase = ''
+      mkdir -p $out
+      find . \( -name '*.html' -o -name '*.css' \) -exec cp {} $out \;
+      ORMOLU_LIVE=${ormoluLive}/bin/ormolu-live.jsexe
+      closure-compiler \
+        $ORMOLU_LIVE/all.js --externs $ORMOLU_LIVE/all.js.externs \
+        -O ADVANCED --jscomp_off=checkVars -W QUIET \
+        --js_output_file $out/all.min.js
     '';
   };
 }

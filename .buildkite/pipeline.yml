@@ -11,6 +11,10 @@ steps:
     command: |
       nix-build --keep-going --no-out-link --argstr ormoluCompiler ghc901
     timeout: 100
+  - label: Build Ormolu Live
+    command: |
+      nix-build -A ormolu-live.website
+    timeout: 120
   - wait
   - label: Check formatting
     command: |

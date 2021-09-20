@@ -8,9 +8,7 @@ module Ormolu.Printer.Meat.Declaration.Foreign
 where
 
 import Control.Monad
-import GHC.Hs.Decls
-import GHC.Hs.Extension
-import GHC.Hs.Type
+import GHC.Hs
 import GHC.Types.ForeignCall
 import GHC.Types.SrcLoc
 import Ormolu.Printer.Combinators
@@ -33,8 +31,8 @@ p_foreignTypeSig fd = do
   breakpoint
   inci
     . switchLayout
-      [ getLoc (fd_name fd),
-        (getLoc . hsib_body . fd_sig_ty) fd
+      [ getLocA (fd_name fd),
+        (getLocA . fd_sig_ty) fd
       ]
     $ do
       p_rdrName (fd_name fd)
@@ -56,14 +54,15 @@ p_foreignImport :: ForeignImport -> R ()
 p_foreignImport (CImport cCallConv safety _ _ sourceText) = do
   txt "foreign import"
   space
-  located cCallConv atom
+  located (reLocA cCallConv) atom
   -- Need to check for 'noLoc' for the 'safe' annotation
+  -- TODO bettwer way?
   when (isGoodSrcSpan $ getLoc safety) (space >> atom safety)
-  located sourceText p_sourceText
+  located (reLocA sourceText) p_sourceText
 
 p_foreignExport :: ForeignExport -> R ()
 p_foreignExport (CExport (L loc (CExportStatic _ _ cCallConv)) sourceText) = do
   txt "foreign export"
   space
-  located (L loc cCallConv) atom
-  located sourceText p_sourceText
+  located (reLocA $ L loc cCallConv) atom
+  located (reLocA sourceText) p_sourceText

@@ -1,4 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 -- | Rendering of commonly useful bits.
@@ -7,7 +8,7 @@ module Ormolu.Printer.Meat.Common
     p_hsmodName,
     p_ieWrappedName,
     p_rdrName,
-    doesNotNeedExtraParens,
+    p_rdrName',
     p_qualName,
     p_infixDefHelper,
     p_hsDocString,
@@ -17,15 +18,14 @@ module Ormolu.Printer.Meat.Common
 where
 
 import Control.Monad
-import Data.List (isPrefixOf)
 import qualified Data.Text as T
 import GHC.Hs.Doc
 import GHC.Hs.ImpExp
 import GHC.Parser.Annotation
-import GHC.Types.Basic
-import GHC.Types.Name (nameStableString)
+import GHC.Stack
 import GHC.Types.Name.Occurrence (OccName (..))
 import GHC.Types.Name.Reader
+import GHC.Types.SourceText
 import GHC.Types.SrcLoc
 import GHC.Unit.Module.Name
 import Ormolu.Printer.Combinators
@@ -47,69 +47,53 @@ p_hsmodName mname = do
 p_ieWrappedName :: IEWrappedName RdrName -> R ()
 p_ieWrappedName = \case
   IEName x -> p_rdrName x
-  IEPattern x -> do
+  IEPattern _ x -> do
     txt "pattern"
     space
     p_rdrName x
-  IEType x -> do
+  IEType _ x -> do
     txt "type"
     space
     p_rdrName x
 
--- | Render a @'Located' 'RdrName'@.
-p_rdrName :: Located RdrName -> R ()
-p_rdrName l@(L spn _) = located l $ \x -> do
-  ids <- getAnns spn
-  let backticksWrapper =
-        if AnnBackquote `elem` ids
-          then backticks
-          else id
-      parensWrapper =
-        if AnnOpenP `elem` ids
-          then parens N
-          else id
-      singleQuoteWrapper =
-        if AnnSimpleQuote `elem` ids
-          then \y -> do
-            txt "'"
-            y
-          else id
-      m =
-        case x of
-          Unqual occName ->
-            atom occName
-          Qual mname occName ->
-            p_qualName mname occName
-          Orig _ occName ->
-            -- This is used when GHC generates code that will be fed into
-            -- the renamer (e.g. from deriving clauses), but where we want
-            -- to say that something comes from given module which is not
-            -- specified in the source code, e.g. @Prelude.map@.
-            --
-            -- My current understanding is that the provided module name
-            -- serves no purpose for us and can be safely ignored.
-            atom occName
-          Exact name ->
-            atom name
-      m' = backticksWrapper (singleQuoteWrapper m)
-  if doesNotNeedExtraParens x
-    then m'
-    else parensWrapper m'
+-- | Render a @'LocatedN' 'RdrName'@.
+p_rdrName :: HasCallStack => LocatedN RdrName -> R ()
+p_rdrName l = located l $ \x -> do
+  let nameAnn = anns . ann . getLoc $ l
+      (unquotedNameAnn, singleQuoteWrapper) =
+        case nameAnn of
+          NameAnnQuote {nann_quoted} ->
+            (anns . ann $ nann_quoted, \y -> txt "'" *> y)
+          _ -> (nameAnn, id)
+      adornmentWrapper = case unquotedNameAnn of
+        NameAnn {nann_adornment = NameParens} -> parens N
+        NameAnn {nann_adornment = NameBackquotes} -> backticks
+        _ -> id
+      wrapper = case ann . getLoc $ l of
+        EpAnn {} -> singleQuoteWrapper . adornmentWrapper
+        EpAnnNotUsed -> id
+  wrapper . p_rdrName' $ x
 
--- | Whether given name should not have parentheses around it. This is used
--- to detect e.g. tuples for which annotations will indicate parentheses,
--- but the parentheses are already part of the symbol, so no extra layer of
--- parentheses should be added. It also detects the [] literal.
-doesNotNeedExtraParens :: RdrName -> Bool
-doesNotNeedExtraParens = \case
+-- | Render a 'RdrName'. Only use this when using 'p_rdrName' is not possible.
+
+-- TODO remove
+p_rdrName' :: RdrName -> R ()
+p_rdrName' = \case
+  Unqual occName ->
+    atom occName
+  Qual mname occName ->
+    p_qualName mname occName
+  Orig _ occName ->
+    -- This is used when GHC generates code that will be fed into
+    -- the renamer (e.g. from deriving clauses), but where we want
+    -- to say that something comes from given module which is not
+    -- specified in the source code, e.g. @Prelude.map@.
+    --
+    -- My current understanding is that the provided module name
+    -- serves no purpose for us and can be safely ignored.
+    atom occName
   Exact name ->
-    let s = nameStableString name
-     in -- I'm not sure this "stable string" is stable enough, but it looks
-        -- like this is the most robust way to tell if we're looking at
-        -- exactly this piece of built-in syntax.
-        ("$ghc-prim$GHC.Tuple$" `isPrefixOf` s)
-          || ("$ghc-prim$GHC.Types$[]" `isPrefixOf` s)
-  _ -> False
+    atom name
 
 p_qualName :: ModuleName -> OccName -> R ()
 p_qualName mname occName = do

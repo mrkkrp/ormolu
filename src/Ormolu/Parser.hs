@@ -22,19 +22,18 @@ import qualified GHC.Data.FastString as GHC
 import qualified GHC.Data.StringBuffer as GHC
 import qualified GHC.Driver.CmdLine as GHC
 import GHC.Driver.Session as GHC
-import qualified GHC.Driver.Types as GHC
 import GHC.DynFlags (baseDynFlags)
 import GHC.LanguageExtensions.Type (Extension (..))
 import qualified GHC.Parser as GHC
+import GHC.Parser.Errors.Ppr (pprError)
 import qualified GHC.Parser.Header as GHC
 import qualified GHC.Parser.Lexer as GHC
+import qualified GHC.Types.SourceError as GHC (handleSourceError)
 import GHC.Types.SrcLoc
-import GHC.Unit.Module.Name
 import GHC.Utils.Error (Severity (..), errMsgSeverity, errMsgSpan)
 import qualified GHC.Utils.Panic as GHC
 import Ormolu.Config
 import Ormolu.Exception
-import Ormolu.Parser.Anns
 import Ormolu.Parser.CommentStream
 import Ormolu.Parser.Result
 import Ormolu.Processing.Common
@@ -89,13 +88,8 @@ parseModuleSnippet ::
   m (Either (SrcSpan, String) ParseResult)
 parseModuleSnippet Config {..} dynFlags path rawInput = liftIO $ do
   let (input, indent) = removeIndentation . linesInRegion cfgRegion $ rawInput
-  let useRecordDot =
-        "record-dot-preprocessor" == pgm_F dynFlags
-          || any
-            (("RecordDotPreprocessor" ==) . moduleNameString)
-            (pluginModNames dynFlags)
-      pStateErrors = \pstate ->
-        let errs = bagToList $ GHC.getErrorMessages pstate dynFlags
+  let pStateErrors = \pstate ->
+        let errs = fmap pprError . bagToList $ GHC.getErrorMessages pstate
             fixupErrSpan = incSpanLine (regionPrefixLength cfgRegion)
          in case L.sortOn (Down . SeverityOrd . errMsgSeverity) errs of
               [] -> Nothing
@@ -116,15 +110,13 @@ parseModuleSnippet Config {..} dynFlags path rawInput = liftIO $ do
             Just err -> Left err
             Nothing ->
               let (stackHeader, pragmas, comments) =
-                    mkCommentStream input pstate hsModule
+                    mkCommentStream input hsModule
                in Right
                     ParseResult
                       { prParsedSource = hsModule,
-                        prAnns = mkAnns pstate,
                         prStackHeader = stackHeader,
                         prPragmas = pragmas,
                         prCommentStream = comments,
-                        prUseRecordDot = useRecordDot,
                         prExtensions = GHC.extensionFlags dynFlags,
                         prIndent = indent
                       }
@@ -183,7 +175,15 @@ runParser parser flags filename input = GHC.unP parser parseState
   where
     location = mkRealSrcLoc (GHC.mkFastString filename) 1 1
     buffer = GHC.stringToStringBuffer input
-    parseState = GHC.mkPState flags buffer location
+    parseState = GHC.initParserState (opts flags) buffer location
+    opts =
+      GHC.mkParserOpts
+        <$> GHC.warningFlags
+        <*> GHC.extensionFlags
+        <*> GHC.safeImportsOn
+        <*> GHC.gopt GHC.Opt_Haddock
+        <*> GHC.gopt GHC.Opt_KeepRawTokenStream
+        <*> const True
 
 -- | Wrap GHC's 'Severity' to add 'Ord' instance.
 newtype SeverityOrd = SeverityOrd Severity

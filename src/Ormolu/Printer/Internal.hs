@@ -18,7 +18,6 @@ module Ormolu.Printer.Internal
     atom,
     space,
     newline,
-    useRecordDot,
     inci,
     inciHalf,
     sitcc,
@@ -49,9 +48,6 @@ module Ormolu.Printer.Internal
     setSpanMark,
     getSpanMark,
 
-    -- * Annotations
-    getAnns,
-
     -- * Extensions
     isExtensionEnabled,
   )
@@ -69,10 +65,8 @@ import Data.Text.Lazy.Builder
 import GHC.Data.EnumSet (EnumSet)
 import qualified GHC.Data.EnumSet as EnumSet
 import GHC.LanguageExtensions.Type
-import GHC.Parser.Annotation
 import GHC.Types.SrcLoc
 import GHC.Utils.Outputable (Outputable)
-import Ormolu.Parser.Anns
 import Ormolu.Parser.CommentStream
 import Ormolu.Printer.SpanStream
 import Ormolu.Utils (showOutputable)
@@ -95,12 +89,8 @@ data RC = RC
     rcLayout :: Layout,
     -- | Spans of enclosing elements of AST
     rcEnclosingSpans :: [RealSrcSpan],
-    -- | Collection of annotations
-    rcAnns :: Anns,
     -- | Whether the last expression in the layout can use braces
     rcCanUseBraces :: Bool,
-    -- | Whether the source could have used the record dot preprocessor
-    rcUseRecDot :: Bool,
     -- | Enabled extensions
     rcExtensions :: EnumSet Extension
   }
@@ -166,15 +156,11 @@ runR ::
   SpanStream ->
   -- | Comment stream
   CommentStream ->
-  -- | Annotations
-  Anns ->
-  -- | Use Record Dot Syntax
-  Bool ->
   -- | Enabled extensions
   EnumSet Extension ->
   -- | Resulting rendition
   Text
-runR (R m) sstream cstream anns recDot extensions =
+runR (R m) sstream cstream extensions =
   TL.toStrict . toLazyText . scBuilder $ execState (runReaderT m rc) sc
   where
     rc =
@@ -182,9 +168,7 @@ runR (R m) sstream cstream anns recDot extensions =
         { rcIndent = 0,
           rcLayout = MultiLine,
           rcEnclosingSpans = [],
-          rcAnns = anns,
           rcCanUseBraces = False,
-          rcUseRecDot = recDot,
           rcExtensions = extensions
         }
     sc =
@@ -378,10 +362,6 @@ newlineRaw = R . modify $ \sc ->
             _ -> AfterNewline
         }
 
--- | Return 'True' if we should print record dot syntax.
-useRecordDot :: R Bool
-useRecordDot = R (asks rcUseRecDot)
-
 inciBy :: Int -> R () -> R ()
 inciBy step (R m) = R (local modRC m)
   where
@@ -565,15 +545,6 @@ setSpanMark spnMark = R . modify $ \sc ->
 -- | Get span of last output comment.
 getSpanMark :: R (Maybe SpanMark)
 getSpanMark = R (gets scSpanMark)
-
-----------------------------------------------------------------------------
--- Annotations
-
--- | For a given span return 'AnnKeywordId's associated with it.
-getAnns ::
-  SrcSpan ->
-  R [AnnKeywordId]
-getAnns spn = lookupAnns spn <$> R (asks rcAnns)
 
 ----------------------------------------------------------------------------
 -- Helpers for braces

@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 
 -- | Functions for working with comment stream.
@@ -27,13 +28,14 @@ import qualified Data.List.NonEmpty as NE
 import qualified Data.Map.Lazy as M
 import Data.Maybe
 import qualified Data.Set as S
+import Debug.Trace
 import GHC.Hs (HsModule)
 import GHC.Hs.Decls (HsDecl (..), LDocDecl, LHsDecl)
 import GHC.Hs.Doc
 import GHC.Hs.Extension
 import GHC.Hs.ImpExp
+import GHC.Parser.Annotation (EpAnnComments (..), getLocA)
 import qualified GHC.Parser.Annotation as GHC
-import qualified GHC.Parser.Lexer as GHC
 import GHC.Types.SrcLoc
 import Ormolu.Parser.Pragma
 import Ormolu.Utils (onTheSameLine, showOutputable, unSrcSpan)
@@ -46,24 +48,22 @@ import Ormolu.Utils (onTheSameLine, showOutputable, unSrcSpan)
 newtype CommentStream = CommentStream [RealLocated Comment]
   deriving (Eq, Data, Semigroup, Monoid)
 
--- | Create 'CommentStream' from 'GHC.PState'. The pragmas are
+-- | Create 'CommentStream' from 'PState'. The pragmas are
 -- removed from the 'CommentStream'.
 mkCommentStream ::
   -- | Original input
   String ->
   -- | Parser state to use for comment extraction
-  GHC.PState ->
-  -- | Parsed module
   HsModule ->
   -- | Stack header, pragmas, and comment stream
   ( Maybe (RealLocated Comment),
     [([RealLocated Comment], Pragma)],
     CommentStream
   )
-mkCommentStream input pstate hsModule =
+mkCommentStream input hsModule =
   ( mstackHeader,
     pragmas,
-    CommentStream comments
+    (if True then id else trace (showCommentStream $ CommentStream comments)) $ CommentStream comments
   )
   where
     (comments, pragmas) = extractPragmas input rawComments1
@@ -80,9 +80,12 @@ mkCommentStream input pstate hsModule =
       where
         -- All comments, including valid and invalid Haddock comments
         allComments =
-          fmap (fmap unAnnotationComment)
-            . (GHC.comment_q <> (concatMap snd . GHC.annotations_comments))
-            $ pstate
+          mapMaybe unAnnotationComment $
+            epAnnCommentsToList =<< listify (only @EpAnnComments) hsModule
+          where
+            epAnnCommentsToList = \case
+              EpaComments cs -> cs
+              EpaCommentsBalanced pcs fcs -> pcs <> fcs
         -- All spans of valid Haddock comments
         -- (everywhere where we use p_hsDoc{String,Name})
         validHaddockCommentSpans =
@@ -90,14 +93,12 @@ mkCommentStream input pstate hsModule =
             . mapMaybe unSrcSpan
             . mconcat
               [ fmap getLoc . listify (only @LHsDocString),
-                fmap getLoc . listify (only @LDocDecl),
-                fmap getLoc . listify isDocD,
-                fmap getLoc . listify isIEDocLike
+                fmap getLocA . listify (only @(LDocDecl GhcPs)),
+                fmap getLocA . listify isDocD,
+                fmap getLocA . listify isIEDocLike
               ]
             $ hsModule
           where
-            only :: a -> Bool
-            only _ = True
             isDocD :: LHsDecl GhcPs -> Bool
             isDocD = \case
               L _ DocD {} -> True
@@ -108,6 +109,8 @@ mkCommentStream input pstate hsModule =
               L _ IEDoc {} -> True
               L _ IEDocNamed {} -> True
               _ -> False
+    only :: a -> Bool
+    only _ = True
 
 -- | Pretty-print a 'CommentStream'.
 showCommentStream :: CommentStream -> String
@@ -225,17 +228,19 @@ extractPragmas input = go initialLs id id
                           then go' ls' [y'] ys
                           else go' ls [] xs
 
--- | Get a 'String' from 'GHC.AnnotationComment'.
-unAnnotationComment :: GHC.AnnotationComment -> String
-unAnnotationComment = \case
-  GHC.AnnDocCommentNext s -> dashPrefix s -- @-- |@
-  GHC.AnnDocCommentPrev s -> dashPrefix s -- @-- ^@
-  GHC.AnnDocCommentNamed s -> dashPrefix s -- @-- $@
-  GHC.AnnDocSection _ s -> dashPrefix s -- @-- *@
-  GHC.AnnDocOptions s -> s
-  GHC.AnnLineComment s -> s
-  GHC.AnnBlockComment s -> s
+-- | Extract @'RealLocated' 'String'@ from 'GHC.LEpaComment'.
+unAnnotationComment :: GHC.LEpaComment -> Maybe (RealLocated String)
+unAnnotationComment (L (GHC.Anchor anchor _) (GHC.EpaComment eck _)) = case eck of
+  GHC.EpaDocCommentNext s -> mkL $ dashPrefix s -- @-- |@
+  GHC.EpaDocCommentPrev s -> mkL $ dashPrefix s -- @-- ^@
+  GHC.EpaDocCommentNamed s -> mkL $ dashPrefix s -- @-- $@
+  GHC.EpaDocSection _ s -> mkL $ dashPrefix s -- @-- *@
+  GHC.EpaDocOptions s -> mkL s
+  GHC.EpaLineComment s -> mkL s
+  GHC.EpaBlockComment s -> mkL s
+  GHC.EpaEofComment -> Nothing
   where
+    mkL = Just . L anchor
     dashPrefix s = "--" <> spaceIfNecessary <> s
       where
         spaceIfNecessary = case s of

@@ -10,7 +10,6 @@ module Ormolu.Printer.Combinators
   ( -- * The 'R' monad
     R,
     runR,
-    getAnns,
     getEnclosingSpan,
     isExtensionEnabled,
 
@@ -71,6 +70,7 @@ where
 import Control.Monad
 import Data.List (intersperse)
 import Data.Text (Text)
+import GHC.Parser.Annotation
 import GHC.Types.SrcLoc
 import Ormolu.Printer.Comments
 import Ormolu.Printer.Internal
@@ -87,19 +87,21 @@ inciIf ::
   R ()
 inciIf b m = if b then inci m else m
 
--- | Enter a 'Located' entity. This combinator handles outputting comments
+-- TODO use LocatedAn instead of GEnLocated stuff?
+
+-- | Enter a 'LocatedAn' entity. This combinator handles outputting comments
 -- and sets layout (single-line vs multi-line) for the inner computation.
 -- Roughly, the rule for using 'located' is that every time there is a
 -- 'Located' wrapper, it should be “discharged” with a corresponding
 -- 'located' invocation.
 located ::
   -- | Thing to enter
-  Located a ->
+  GenLocated (SrcSpanAnn' ann) a ->
   -- | How to render inner value
   (a -> R ()) ->
   R ()
-located (L (UnhelpfulSpan _) a) f = f a
-located (L (RealSrcSpan l _) a) f = realLocated (L l a) f
+located (L (SrcSpanAnn _ (UnhelpfulSpan _)) a) f = f a
+located (L (SrcSpanAnn _ (RealSrcSpan l _)) a) f = realLocated (L l a) f
 
 -- | See 'located'
 realLocated ::
@@ -119,7 +121,7 @@ located' ::
   -- | How to render inner value
   (a -> R ()) ->
   -- | Thing to enter
-  Located a ->
+  GenLocated (SrcSpanAnn' ann) a ->
   R ()
 located' = flip located
 

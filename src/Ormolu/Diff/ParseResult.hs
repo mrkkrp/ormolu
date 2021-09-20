@@ -19,7 +19,7 @@ import Data.ByteString (ByteString)
 import Data.Foldable
 import Data.Generics
 import GHC.Hs
-import GHC.Types.Basic
+import GHC.Types.SourceText
 import GHC.Types.SrcLoc
 import Ormolu.Imports (normalizeImports)
 import Ormolu.Parser.CommentStream
@@ -32,6 +32,7 @@ data ParseResultDiff
     Same
   | -- | Two parse results differ
     Different [SrcSpan]
+  deriving (Show)
 
 instance Semigroup ParseResultDiff where
   Same <> a = a
@@ -91,6 +92,7 @@ matchIgnoringSrcSpans a = genericQuery a
           gzipWithQ
             ( genericQuery
                 `extQ` srcSpanEq
+                `ext1Q` epAnnEq
                 `extQ` sourceTextEq
                 `extQ` hsDocStringEq
                 `extQ` importDeclQualifiedStyleEq
@@ -103,6 +105,8 @@ matchIgnoringSrcSpans a = genericQuery a
       | otherwise = Different []
     srcSpanEq :: SrcSpan -> GenericQ ParseResultDiff
     srcSpanEq _ _ = Same
+    epAnnEq :: EpAnn a -> GenericQ ParseResultDiff
+    epAnnEq _ _ = Same
     sourceTextEq :: SourceText -> GenericQ ParseResultDiff
     sourceTextEq _ _ = Same
     importDeclQualifiedStyleEq ::
@@ -137,8 +141,8 @@ matchIgnoringSrcSpans a = genericQuery a
     -- as we normalize arrow styles (e.g. -> vs →), we consider them equal here
     unicodeArrowStyleEq :: HsArrow GhcPs -> GenericQ ParseResultDiff
     unicodeArrowStyleEq (HsUnrestrictedArrow _) (castArrow -> Just (HsUnrestrictedArrow _)) = Same
-    unicodeArrowStyleEq (HsLinearArrow _) (castArrow -> Just (HsLinearArrow _)) = Same
-    unicodeArrowStyleEq (HsExplicitMult _ t) (castArrow -> Just (HsExplicitMult _ t')) = genericQuery t t'
+    unicodeArrowStyleEq (HsLinearArrow _ _) (castArrow -> Just (HsLinearArrow _ _)) = Same
+    unicodeArrowStyleEq (HsExplicitMult _ _ t) (castArrow -> Just (HsExplicitMult _ _ t')) = genericQuery t t'
     unicodeArrowStyleEq _ _ = Different []
     castArrow :: Typeable a => a -> Maybe (HsArrow GhcPs)
     castArrow = cast

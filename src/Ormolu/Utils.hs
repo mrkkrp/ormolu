@@ -24,10 +24,11 @@ import qualified Data.List.NonEmpty as NE
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T
+import GHC.Driver.Ppr
 import GHC.DynFlags (baseDynFlags)
 import GHC.Hs
 import GHC.Types.SrcLoc
-import qualified GHC.Utils.Outputable as GHC
+import GHC.Utils.Outputable
 
 -- | Relative positions in a list.
 data RelativePos
@@ -57,8 +58,8 @@ notImplemented :: String -> a
 notImplemented msg = error $ "not implemented yet: " ++ msg
 
 -- | Pretty-print an 'GHC.Outputable' thing.
-showOutputable :: GHC.Outputable o => o -> String
-showOutputable = GHC.showSDoc baseDynFlags . GHC.ppr
+showOutputable :: Outputable o => o -> String
+showOutputable = showSDoc baseDynFlags . ppr
 
 -- | Split and normalize a doc string. The result is a list of lines that
 -- make up the comment.

@@ -1,3 +1,10 @@
 packages: .
 
 constraints: ormolu +dev
+
+source-repository-package
+  type: git
+  location: https://github.com/amesgen/stuff
+  tag: 9e812ae0f3073271fa829044bb26b89a5c9f8be0
+  subdir:  ghc-lib-parser-9.2.1.20210910
+  --sha256: 0q9p7yi316j09vgbkyzjipm71ydp2bvqfbpw6s487qg5hj3kc1w4

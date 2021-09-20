@@ -10,8 +10,7 @@ module Ormolu.Printer.Meat.ImportExport
 where
 
 import Control.Monad
-import GHC.Hs.Extension
-import GHC.Hs.ImpExp
+import GHC.Hs
 import GHC.LanguageExtensions.Type
 import GHC.Types.SrcLoc
 import GHC.Unit.Types
@@ -50,7 +49,7 @@ p_hsmodImport ImportDecl {..} = do
     Just slit -> atom slit
   space
   inci $ do
-    located ideclName atom
+    located (reLocA ideclName) atom
     when
       (isImportDeclQualified ideclQualified && useQualifiedPost)
       (space >> txt "qualified")
@@ -60,7 +59,7 @@ p_hsmodImport ImportDecl {..} = do
         space
         txt "as"
         space
-        located l atom
+        located (reLocA l) atom
     space
     case ideclHiding of
       Nothing -> return ()
@@ -83,15 +82,15 @@ p_lie encLayout relativePos = \case
   IEVar NoExtField l1 -> do
     located l1 p_ieWrappedName
     p_comma
-  IEThingAbs NoExtField l1 -> do
+  IEThingAbs _ l1 -> do
     located l1 p_ieWrappedName
     p_comma
-  IEThingAll NoExtField l1 -> do
+  IEThingAll _ l1 -> do
     located l1 p_ieWrappedName
     space
     txt "(..)"
     p_comma
-  IEThingWith NoExtField l1 w xs _ -> sitcc $ do
+  IEThingWith _ l1 w xs -> sitcc $ do
     located l1 p_ieWrappedName
     breakpoint
     inci $ do
@@ -104,8 +103,8 @@ p_lie encLayout relativePos = \case
             let (before, after) = splitAt n names
              in before ++ [txt ".."] ++ after
     p_comma
-  IEModuleContents NoExtField l1 -> do
-    located l1 p_hsmodName
+  IEModuleContents _ l1 -> do
+    located (reLocA l1) p_hsmodName
     p_comma
   IEGroup NoExtField n str -> do
     case relativePos of

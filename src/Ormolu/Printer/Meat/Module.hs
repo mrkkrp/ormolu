@@ -9,7 +9,7 @@ module Ormolu.Printer.Meat.Module
 where
 
 import Control.Monad
-import GHC.Hs
+import GHC.Hs hiding (comment)
 import GHC.Types.SrcLoc
 import Ormolu.Imports (normalizeImports)
 import Ormolu.Parser.CommentStream
@@ -32,8 +32,8 @@ p_hsModule ::
   HsModule ->
   R ()
 p_hsModule mstackHeader pragmas HsModule {..} = do
-  let deprecSpan = maybe [] (\(L s _) -> [s]) hsmodDeprecMessage
-      exportSpans = maybe [] (\(L s _) -> [s]) hsmodExports
+  let deprecSpan = maybe [] (pure . getLocA) hsmodDeprecMessage
+      exportSpans = maybe [] (pure . getLocA) hsmodExports
   switchLayout (deprecSpan <> exportSpans) $ do
     forM_ mstackHeader $ \(L spn comment) -> do
       spitCommentNow spn comment
@@ -44,7 +44,7 @@ p_hsModule mstackHeader pragmas HsModule {..} = do
     case hsmodName of
       Nothing -> return ()
       Just hsmodName' -> do
-        located hsmodName' $ \name -> do
+        located (reLocA hsmodName') $ \name -> do
           forM_ hsmodHaddockModHeader (p_hsDocString Pipe True)
           p_hsmodName name
         breakpoint
@@ -62,7 +62,7 @@ p_hsModule mstackHeader pragmas HsModule {..} = do
     newline
     forM_ (normalizeImports hsmodImports) (located' p_hsmodImport)
     newline
-    switchLayout (getLoc <$> hsmodDecls) $ do
+    switchLayout (getLocA <$> hsmodDecls) $ do
       p_hsDecls Free hsmodDecls
       newline
       spitRemainingComments

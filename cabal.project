@@ -1,3 +1,9 @@
-packages: .
+packages: . ormolu-live
 
 constraints: ormolu +dev
+
+source-repository-package
+  type: git
+  location: https://github.com/amesgen/stuff
+  tag: 3b0cb6148e9592c3bd10705800d0ec84a8d12425
+  subdir: ghc-lib-parser-9.0.1.20210324-asterius

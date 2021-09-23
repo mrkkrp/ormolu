@@ -1,0 +1,14 @@
+cabal-version: 2.4
+name: ormolu-live
+version: 0.0.0.0
+author: amesgen
+maintainer: amesgen@amesgen.de
+
+executable ormolu-live
+    main-is: OrmoluLive.hs
+    build-depends:
+        base
+      , asterius-prelude
+      , ormolu
+    hs-source-dirs: .
+    default-language: Haskell2010

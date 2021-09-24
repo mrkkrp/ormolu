@@ -19,8 +19,8 @@ where
 
 import Control.Monad
 import Data.Bool (bool)
+import Data.Coerce (coerce)
 import Data.Data hiding (Infix, Prefix)
-import Data.Either
 import Data.Function (on)
 import Data.Functor ((<&>))
 import Data.Generics.Schemes (everything)
@@ -32,6 +32,7 @@ import Data.Text (Text)
 import qualified Data.Text as Text
 import Data.Void
 import GHC.Data.Bag (bagToList)
+import GHC.Data.FastString (FastString)
 import GHC.Hs
 import GHC.LanguageExtensions.Type (Extension (NegativeLiterals))
 import GHC.Parser.CharClass (is_space)
@@ -535,12 +536,22 @@ p_hsLocalBinds = \case
      in sepSemi (located' p_ipBind) xs
   EmptyLocalBinds _ -> return ()
 
+p_lhsFieldLabel :: Located (HsFieldLabel GhcPs) -> R ()
+p_lhsFieldLabel =
+  -- We can ignore the locs as RecordDot-like fields are
+  -- always of the form a.b.c without newlines etc.
+  atom @FastString . unLoc . hflLabel . unLoc
+
+p_fieldLabels :: [Located (HsFieldLabel GhcPs)] -> R ()
+p_fieldLabels flss =
+  sep (txt ".") p_lhsFieldLabel flss
+
 p_hsRecField ::
-  (id -> LocatedN RdrName) ->
+  (id -> R ()) ->
   HsRecField' id (LHsExpr GhcPs) ->
   R ()
-p_hsRecField extractRdrName HsRecField {..} = do
-  located (reLocA hsRecFieldLbl) $ p_rdrName . extractRdrName
+p_hsRecField p_lbl HsRecField {..} = do
+  located (reLocA hsRecFieldLbl) p_lbl
   unless hsRecPun $ do
     space
     equals
@@ -746,7 +757,8 @@ p_hsExpr' s = \case
     located rcon_con atom
     breakpoint
     let HsRecFields {..} = rcon_flds
-        fields = located' (p_hsRecField rdrNameFieldOcc) <$> rec_flds
+        p_lbl = p_rdrName . rdrNameFieldOcc
+        fields = located' (p_hsRecField p_lbl) <$> rec_flds
         dotdot =
           case rec_dotdot of
             Just {} -> [txt ".."]
@@ -756,17 +768,24 @@ p_hsExpr' s = \case
   RecordUpd {..} -> do
     located rupd_expr p_hsExpr
     breakpoint
-    let extractRdrName = \case
-          Unambiguous NoExtField n -> n
-          Ambiguous NoExtField n -> n
+    let p_updLbl =
+          p_rdrName . \case
+            Unambiguous NoExtField n -> n
+            Ambiguous NoExtField n -> n
+        p_recFields p_lbl =
+          sep commaDel (sitcc . located' (p_hsRecField p_lbl))
     inci . braces N $
-      sep
-        commaDel
-        (sitcc . located' (p_hsRecField extractRdrName))
-        -- TODO also use Right!!
-        (fromLeft [] rupd_flds)
-  HsGetField {} -> undefined -- TODO
-  HsProjection {} -> undefined -- TODO
+      either
+        (p_recFields p_updLbl)
+        (p_recFields (p_fieldLabels . coerce))
+        rupd_flds
+  HsGetField {..} -> do
+    located gf_expr p_hsExpr
+    txt "."
+    p_lhsFieldLabel gf_field
+  HsProjection {..} -> parens N $ do
+    txt "."
+    p_fieldLabels proj_flds
   ExprWithTySig _ x HsWC {hswc_body} -> sitcc $ do
     located x p_hsExpr
     space

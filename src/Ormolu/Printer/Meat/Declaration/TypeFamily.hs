@@ -27,9 +27,11 @@ p_famDecl style FamilyDecl {fdTyVars = HsQTvs {..}, ..} = do
   txt $ case style of
     Associated -> mempty
     Free -> " family"
-  breakpoint
-  inci $ do
-    switchLayout (getLocA fdLName : (getLocA <$> hsq_explicit)) $
+  let headerSpns = getLocA fdLName : (getLocA <$> hsq_explicit)
+      headerAndSigSpns = getLoc fdResultSig : headerSpns
+  inci . switchLayout headerAndSigSpns $ do
+    breakpoint
+    switchLayout headerSpns $ do
       p_infixDefHelper
         (isInfix fdFixity)
         True
@@ -44,7 +46,7 @@ p_famDecl style FamilyDecl {fdTyVars = HsQTvs {..}, ..} = do
   case mmeqs of
     Nothing -> return ()
     Just meqs -> do
-      inci $ do
+      inci . switchLayout headerAndSigSpns $ do
         breakpoint
         txt "where"
       case meqs of

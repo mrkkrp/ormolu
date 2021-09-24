@@ -36,7 +36,7 @@ p_foreignTypeSig fd = do
       ]
     $ do
       p_rdrName (fd_name fd)
-      p_typeAscription (HsWC NoExtField (fd_sig_ty fd))
+      p_typeAscription (fd_sig_ty fd)
 
 -- | Printer for 'ForeignImport'.
 --

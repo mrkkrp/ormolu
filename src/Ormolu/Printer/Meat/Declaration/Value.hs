@@ -1030,8 +1030,7 @@ p_pat = \case
       located (reLocA k) (atom . ol_val)
   SigPat _ pat HsPS {..} -> do
     located pat p_pat
-    -- TODO separate function for this
-    p_typeAscription (HsWC NoExtField (noLocA (HsSig NoExtField (HsOuterImplicit NoExtField) hsps_body)))
+    p_typeAscription (lhsTypeToSigType hsps_body)
 
 p_pat_hsRecField :: HsRecField' (FieldOcc GhcPs) (LPat GhcPs) -> R ()
 p_pat_hsRecField HsRecField {..} = do

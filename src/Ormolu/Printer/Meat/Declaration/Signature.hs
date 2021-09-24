@@ -26,13 +26,13 @@ import Ormolu.Utils
 
 p_sigDecl :: Sig GhcPs -> R ()
 p_sigDecl = \case
-  TypeSig _ names hswc -> p_typeSig True names hswc
-  PatSynSig _ names hsib -> p_patSynSig names hsib
-  ClassOpSig _ def names hsib -> p_classOpSig def names hsib
+  TypeSig _ names hswc -> p_typeSig True names (hswc_body hswc)
+  PatSynSig _ names sigType -> p_patSynSig names sigType
+  ClassOpSig _ def names sigType -> p_classOpSig def names sigType
   FixSig _ sig -> p_fixSig sig
   InlineSig _ name inlinePragma -> p_inlineSig name inlinePragma
   SpecSig _ name ts inlinePragma -> p_specSig name ts inlinePragma
-  SpecInstSig _ _ hsib -> p_specInstSig hsib
+  SpecInstSig _ _ sigType -> p_specInstSig sigType
   MinimalSig _ _ booleanFormula -> p_minimalSig booleanFormula
   CompleteMatchSig _ _sourceText cs ty -> p_completeSig cs ty
   SCCFunSig _ _ name literal -> p_sccSig name literal
@@ -44,41 +44,37 @@ p_typeSig ::
   -- | Names (before @::@)
   [LocatedN RdrName] ->
   -- | Type
-  LHsSigWcType GhcPs ->
+  LHsSigType GhcPs ->
   R ()
 p_typeSig _ [] _ = return () -- should not happen though
-p_typeSig indentTail (n : ns) hswc = do
+p_typeSig indentTail (n : ns) sigType = do
   p_rdrName n
   if null ns
-    then p_typeAscription hswc
+    then p_typeAscription sigType
     else inciIf indentTail $ do
       commaDel
       sep commaDel p_rdrName ns
-      p_typeAscription hswc
+      p_typeAscription sigType
 
 p_typeAscription ::
-  LHsSigWcType GhcPs ->
+  LHsSigType GhcPs ->
   R ()
-p_typeAscription HsWC {..} = inci $ do
+p_typeAscription sigType = inci $ do
   space
   txt "::"
   -- TODO can forall occur? (explicit bndrs)
-  if hasDocStrings (unLoc . sig_body . unLoc $ hswc_body)
+  if hasDocStrings (unLoc . sig_body . unLoc $ sigType)
     then newline
     else breakpoint
-  located hswc_body p_hsSigType
+  located sigType p_hsSigType
 
 p_patSynSig ::
   [LocatedN RdrName] ->
   LHsSigType GhcPs ->
   R ()
-p_patSynSig names hsib = do
+p_patSynSig names sigType = do
   txt "pattern"
-  let body =
-        p_typeSig
-          False
-          names
-          HsWC {hswc_ext = NoExtField, hswc_body = hsib}
+  let body = p_typeSig False names sigType
   if length names > 1
     then breakpoint >> inci body
     else space >> body
@@ -91,9 +87,9 @@ p_classOpSig ::
   -- | Type
   LHsSigType GhcPs ->
   R ()
-p_classOpSig def names hsib = do
+p_classOpSig def names sigType = do
   when def (txt "default" >> space)
-  p_typeSig True names HsWC {hswc_ext = NoExtField, hswc_body = hsib}
+  p_typeSig True names sigType
 
 p_fixSig ::
   FixitySig GhcPs ->
@@ -169,9 +165,9 @@ p_activation = \case
   FinalActive -> notImplemented "FinalActive" -- NOTE(amesgen) is this unreachable or just not implemented?
 
 p_specInstSig :: LHsSigType GhcPs -> R ()
-p_specInstSig hsib =
+p_specInstSig sigType =
   pragma "SPECIALIZE instance" . inci $
-    located hsib p_hsSigType
+    located sigType p_hsSigType
 
 p_minimalSig ::
   -- | Boolean formula

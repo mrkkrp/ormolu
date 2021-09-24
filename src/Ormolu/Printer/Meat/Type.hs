@@ -19,6 +19,7 @@ module Ormolu.Printer.Meat.Type
     tyVarsToTypes,
     tyVarsToTyPats,
     hsOuterTyVarBndrsToHsType,
+    lhsTypeToSigType,
   )
 where
 
@@ -30,26 +31,6 @@ import GHC.Types.SourceText
 import GHC.Types.SrcLoc
 import GHC.Types.Var
 import Ormolu.Printer.Combinators
-  ( BracketStyle (N),
-    HaddockStyle (Caret, Pipe),
-    R,
-    atom,
-    braces,
-    brackets,
-    breakpoint,
-    commaDel,
-    inci,
-    located,
-    located',
-    newline,
-    parens,
-    parensHash,
-    sep,
-    sitcc,
-    space,
-    switchLayout,
-    txt,
-  )
 import Ormolu.Printer.Meat.Common
 import {-# SOURCE #-} Ormolu.Printer.Meat.Declaration.Value (p_hsSplice, p_stringLit)
 import Ormolu.Printer.Operators
@@ -360,3 +341,7 @@ hsOuterTyVarBndrsToHsType obndrs ty = case obndrs of
   HsOuterImplicit NoExtField -> unLoc ty
   HsOuterExplicit _ bndrs ->
     HsForAllTy NoExtField (toForAllTelescope bndrs) ty
+
+lhsTypeToSigType :: LHsType GhcPs -> LHsSigType GhcPs
+lhsTypeToSigType ty =
+  reLocA . L (getLocA ty) . HsSig NoExtField (HsOuterImplicit NoExtField) $ ty

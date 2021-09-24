@@ -68,5 +68,4 @@ p_ruleBndr = \case
   RuleBndr _ x -> p_rdrName x
   RuleBndrSig _ x HsPS {..} -> parens N $ do
     p_rdrName x
-    -- TODO separate function for this
-    p_typeAscription (HsWC NoExtField (noLocA (HsSig NoExtField (HsOuterImplicit NoExtField) hsps_body)))
+    p_typeAscription (lhsTypeToSigType hsps_body)

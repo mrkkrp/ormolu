@@ -8,7 +8,6 @@ module Ormolu.Printer.Meat.Common
     p_hsmodName,
     p_ieWrappedName,
     p_rdrName,
-    p_rdrName',
     p_qualName,
     p_infixDefHelper,
     p_hsDocString,
@@ -58,41 +57,31 @@ p_ieWrappedName = \case
 -- | Render a @'LocatedN' 'RdrName'@.
 p_rdrName :: LocatedN RdrName -> R ()
 p_rdrName l = located l $ \x -> do
-  let nameAnn = anns . ann . getLoc $ l
-      (unquotedNameAnn, singleQuoteWrapper) =
-        case nameAnn of
-          NameAnnQuote {nann_quoted} ->
-            (anns . ann $ nann_quoted, \y -> txt "'" *> y)
-          _ -> (nameAnn, id)
-      adornmentWrapper = case unquotedNameAnn of
-        NameAnn {nann_adornment = NameParens} -> parens N
-        NameAnn {nann_adornment = NameBackquotes} -> backticks
-        _ -> id
-      wrapper = case ann . getLoc $ l of
-        EpAnn {} -> singleQuoteWrapper . adornmentWrapper
+  let wrapper = \case
+        EpAnn {anns} -> case anns of
+          NameAnnQuote {nann_quoted} -> tickPrefix . wrapper (ann nann_quoted)
+          NameAnn {nann_adornment = NameParens} -> parens N
+          NameAnn {nann_adornment = NameBackquotes} -> backticks
+          _ -> id
         EpAnnNotUsed -> id
-  wrapper . p_rdrName' $ x
-
--- | Render a 'RdrName'. Only use this when using 'p_rdrName' is not possible.
-
--- TODO remove
-p_rdrName' :: RdrName -> R ()
-p_rdrName' = \case
-  Unqual occName ->
-    atom occName
-  Qual mname occName ->
-    p_qualName mname occName
-  Orig _ occName ->
-    -- This is used when GHC generates code that will be fed into
-    -- the renamer (e.g. from deriving clauses), but where we want
-    -- to say that something comes from given module which is not
-    -- specified in the source code, e.g. @Prelude.map@.
-    --
-    -- My current understanding is that the provided module name
-    -- serves no purpose for us and can be safely ignored.
-    atom occName
-  Exact name ->
-    atom name
+  wrapper (ann . getLoc $ l) $ case x of
+    Unqual occName ->
+      atom occName
+    Qual mname occName ->
+      p_qualName mname occName
+    Orig _ occName ->
+      -- This is used when GHC generates code that will be fed into
+      -- the renamer (e.g. from deriving clauses), but where we want
+      -- to say that something comes from given module which is not
+      -- specified in the source code, e.g. @Prelude.map@.
+      --
+      -- My current understanding is that the provided module name
+      -- serves no purpose for us and can be safely ignored.
+      atom occName
+    Exact name ->
+      atom name
+  where
+    tickPrefix y = txt "'" *> y
 
 p_qualName :: ModuleName -> OccName -> R ()
 p_qualName mname occName = do

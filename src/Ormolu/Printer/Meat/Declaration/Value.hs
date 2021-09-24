@@ -1063,7 +1063,7 @@ p_hsSplice = \case
   HsUntypedSplice _ deco _ expr -> p_hsSpliceTH False expr deco
   HsQuasiQuote _ _ quoterName _ str -> do
     txt "["
-    p_rdrName' quoterName
+    p_rdrName (noLocA quoterName)
     txt "|"
     -- QuasiQuoters often rely on precise custom strings. We cannot do any
     -- formatting here without potentially breaking someone's code.

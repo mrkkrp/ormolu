@@ -76,6 +76,7 @@ diffCommentStream (CommentStream cs) (CommentStream cs')
 --     * style (ASCII vs Unicode) of arrows
 --     * LayoutInfo (brace style) in extension fields
 --     * Empty contexts in type classes
+--     * Parens around derived type classes
 matchIgnoringSrcSpans :: Data a => a -> a -> ParseResultDiff
 matchIgnoringSrcSpans a = genericQuery a
   where
@@ -101,6 +102,7 @@ matchIgnoringSrcSpans a = genericQuery a
                 `extQ` unicodeArrowStyleEq
                 `extQ` layoutInfoEq
                 `extQ` classDeclCtxEq
+                `extQ` derivedTyClsParensEq
                 `ext2Q` forLocated
             )
             x
@@ -156,3 +158,6 @@ matchIgnoringSrcSpans a = genericQuery a
     classDeclCtxEq :: TyClDecl GhcPs -> GenericQ ParseResultDiff
     classDeclCtxEq tc@ClassDecl {tcdCtxt = Just (L _ [])} tc' = genericQuery tc {tcdCtxt = Nothing} tc'
     classDeclCtxEq tc tc' = genericQuery tc tc'
+    derivedTyClsParensEq :: DerivClauseTys GhcPs -> GenericQ ParseResultDiff
+    derivedTyClsParensEq (DctSingle NoExtField sigTy) dct' = genericQuery (DctMulti NoExtField [sigTy]) dct'
+    derivedTyClsParensEq dct dct' = genericQuery dct dct'

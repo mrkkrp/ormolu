@@ -125,7 +125,7 @@ parseModuleSnippet Config {..} dynFlags path rawInput = liftIO $ do
 -- | Enable all language extensions that we think should be enabled by
 -- default for ease of use.
 setDefaultExts :: DynFlags -> DynFlags
-setDefaultExts flags = L.foldl' xopt_set flags autoExts
+setDefaultExts flags = L.foldl' xopt_set (lang_set flags (Just Haskell2010)) autoExts
   where
     autoExts = allExts L.\\ manualExts
     allExts = [minBound .. maxBound]

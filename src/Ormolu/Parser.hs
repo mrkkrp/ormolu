@@ -156,7 +156,8 @@ manualExts =
     -- decision of enabling this style is left to the user
     NegativeLiterals, -- with this, `- 1` and `-1` have differing AST
     LexicalNegation, -- implies NegativeLiterals
-    LinearTypes -- steals the (%) type operator in some cases
+    LinearTypes, -- steals the (%) type operator in some cases
+    OverloadedRecordDot -- f.g parses differently
   ]
 
 -- | Run a 'GHC.P' computation.

@@ -28,7 +28,6 @@ import qualified Data.List.NonEmpty as NE
 import qualified Data.Map.Lazy as M
 import Data.Maybe
 import qualified Data.Set as S
-import Debug.Trace
 import GHC.Hs (HsModule)
 import GHC.Hs.Decls (HsDecl (..), LDocDecl, LHsDecl)
 import GHC.Hs.Doc
@@ -63,7 +62,7 @@ mkCommentStream ::
 mkCommentStream input hsModule =
   ( mstackHeader,
     pragmas,
-    (if True then id else trace (showCommentStream $ CommentStream comments)) $ CommentStream comments
+    CommentStream comments
   )
   where
     (comments, pragmas) = extractPragmas input rawComments1

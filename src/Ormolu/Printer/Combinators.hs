@@ -25,7 +25,6 @@ module Ormolu.Printer.Combinators
     inciHalf,
     located,
     located',
-    realLocated,
     switchLayout,
     Layout (..),
     vlayout,
@@ -87,9 +86,7 @@ inciIf ::
   R ()
 inciIf b m = if b then inci m else m
 
--- TODO use LocatedAn instead of GEnLocated stuff?
-
--- | Enter a 'LocatedAn' entity. This combinator handles outputting comments
+-- | Enter a 'GenLocated' entity. This combinator handles outputting comments
 -- and sets layout (single-line vs multi-line) for the inner computation.
 -- Roughly, the rule for using 'located' is that every time there is a
 -- 'Located' wrapper, it should be “discharged” with a corresponding
@@ -101,16 +98,7 @@ located ::
   (a -> R ()) ->
   R ()
 located (L (SrcSpanAnn _ (UnhelpfulSpan _)) a) f = f a
-located (L (SrcSpanAnn _ (RealSrcSpan l _)) a) f = realLocated (L l a) f
-
--- | See 'located'
-realLocated ::
-  -- | Thing to enter
-  RealLocated a ->
-  -- | How to render inner value
-  (a -> R ()) ->
-  R ()
-realLocated (L l a) f = do
+located (L (SrcSpanAnn _ (RealSrcSpan l _)) a) f = do
   spitPrecedingComments l
   withEnclosingSpan l $
     switchLayout [RealSrcSpan l Nothing] (f a)

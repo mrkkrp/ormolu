@@ -16,7 +16,6 @@ import Control.Monad
 import qualified Data.List.NonEmpty as NE
 import Data.Maybe (listToMaybe)
 import qualified Data.Text as T
-import Debug.Trace
 import GHC.Types.SrcLoc
 import Ormolu.Parser.CommentStream
 import Ormolu.Printer.Internal
@@ -31,7 +30,6 @@ spitPrecedingComments ::
   R ()
 spitPrecedingComments ref = do
   gotSome <- handleCommentSeries (spitPrecedingComment ref)
-  when gotSome $ traceM $ "we printed preceding comments at " <> show ref
   when gotSome $ do
     lastMark <- getSpanMark
     -- Insert a blank line between the preceding comments and the thing
@@ -45,8 +43,7 @@ spitFollowingComments ::
   R ()
 spitFollowingComments ref = do
   trimSpanStream ref
-  gotSome <- handleCommentSeries (spitFollowingComment ref)
-  when gotSome $ traceM $ "we printed following comments at " <> show ref
+  void $ handleCommentSeries (spitFollowingComment ref)
 
 -- | Output all remaining comments in the comment stream.
 spitRemainingComments :: R ()
@@ -198,12 +195,11 @@ commentFollowsElt ::
   RealLocated Comment ->
   Bool
 commentFollowsElt ref mnSpn meSpn mlastMark (L l comment) =
-  traceShow (goesAfter, logicallyFollows, noEltBetween, (continuation, lastInEnclosing, supersedesParentElt)) $
-    -- A comment follows a AST element if all 4 conditions are satisfied:
-    goesAfter
-      && logicallyFollows
-      && noEltBetween
-      && (continuation || lastInEnclosing || supersedesParentElt)
+  -- A comment follows a AST element if all 4 conditions are satisfied:
+  goesAfter
+    && logicallyFollows
+    && noEltBetween
+    && (continuation || lastInEnclosing || supersedesParentElt)
   where
     -- 1) The comment starts after end of the AST element:
     goesAfter =

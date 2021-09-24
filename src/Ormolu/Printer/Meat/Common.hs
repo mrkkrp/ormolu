@@ -22,7 +22,6 @@ import qualified Data.Text as T
 import GHC.Hs.Doc
 import GHC.Hs.ImpExp
 import GHC.Parser.Annotation
-import GHC.Stack
 import GHC.Types.Name.Occurrence (OccName (..))
 import GHC.Types.Name.Reader
 import GHC.Types.SourceText
@@ -57,7 +56,7 @@ p_ieWrappedName = \case
     p_rdrName x
 
 -- | Render a @'LocatedN' 'RdrName'@.
-p_rdrName :: HasCallStack => LocatedN RdrName -> R ()
+p_rdrName :: LocatedN RdrName -> R ()
 p_rdrName l = located l $ \x -> do
   let nameAnn = anns . ann . getLoc $ l
       (unquotedNameAnn, singleQuoteWrapper) =

@@ -502,7 +502,7 @@ gatherStmtBlock (ParStmtBlock _ stmts _ _) =
 
 p_hsLocalBinds :: HsLocalBinds GhcPs -> R ()
 p_hsLocalBinds = \case
-  HsValBinds epAnn (ValBinds _ bag lsigs) -> switchLayoutAnchor epAnn $ do
+  HsValBinds epAnn (ValBinds _ bag lsigs) -> pseudoLocated epAnn $ do
     -- When in a single-line layout, there is a chance that the inner
     -- elements will also contain semicolons and they will confuse the
     -- parser. so we request braces around every element except the last.
@@ -522,7 +522,7 @@ p_hsLocalBinds = \case
         binds = sortBy (leftmost_smallest `on` getLocA) items
     sitcc $ sepSemi p_item' (attachRelativePos binds)
   HsValBinds _ _ -> notImplemented "HsValBinds"
-  HsIPBinds epAnn (IPBinds _ xs) -> switchLayoutAnchor epAnn $ do
+  HsIPBinds epAnn (IPBinds _ xs) -> pseudoLocated epAnn $ do
     -- Second argument of IPBind is always Left before type-checking.
     let p_ipBind (IPBind _ (Left name) expr) = do
           atom name
@@ -536,9 +536,10 @@ p_hsLocalBinds = \case
     sepSemi (located' p_ipBind) xs
   EmptyLocalBinds _ -> return ()
   where
-    switchLayoutAnchor = \case
+    -- TODO explain why we do this
+    pseudoLocated = \case
       EpAnn {anns = AnnList {al_anchor = Just Anchor {anchor}}} ->
-        switchLayout [RealSrcSpan anchor Nothing]
+        located (L (RealSrcSpan anchor Nothing) ()) . const
       _ -> id
 
 p_lhsFieldLabel :: Located (HsFieldLabel GhcPs) -> R ()

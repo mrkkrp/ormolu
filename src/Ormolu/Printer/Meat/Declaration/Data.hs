@@ -141,7 +141,7 @@ p_conDecl singleConstRec = \case
                   HsFunTy
                     EpAnnNotUsed
                     (HsUnrestrictedArrow NormalSyntax)
-                    (reLocA . reLoc $ HsRecTy EpAnnNotUsed <$> r)
+                    (la2la $ HsRecTy EpAnnNotUsed <$> r)
                     con_res_ty
             qualTy = case con_mb_cxt of
               Nothing -> conTy

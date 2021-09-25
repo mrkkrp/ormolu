@@ -502,7 +502,7 @@ gatherStmtBlock (ParStmtBlock _ stmts _ _) =
 
 p_hsLocalBinds :: HsLocalBinds GhcPs -> R ()
 p_hsLocalBinds = \case
-  HsValBinds _ (ValBinds _ bag lsigs) -> do
+  HsValBinds epAnn (ValBinds _ bag lsigs) -> switchLayoutAnchor epAnn $ do
     -- When in a single-line layout, there is a chance that the inner
     -- elements will also contain semicolons and they will confuse the
     -- parser. so we request braces around every element except the last.
@@ -522,7 +522,7 @@ p_hsLocalBinds = \case
         binds = sortBy (leftmost_smallest `on` getLocA) items
     sitcc $ sepSemi p_item' (attachRelativePos binds)
   HsValBinds _ _ -> notImplemented "HsValBinds"
-  HsIPBinds _ (IPBinds _ xs) ->
+  HsIPBinds epAnn (IPBinds _ xs) -> switchLayoutAnchor epAnn $ do
     -- Second argument of IPBind is always Left before type-checking.
     let p_ipBind (IPBind _ (Left name) expr) = do
           atom name
@@ -533,8 +533,13 @@ p_hsLocalBinds = \case
         p_ipBind (IPBind _ (Right _) _) =
           -- Should only occur after the type checker
           notImplemented "IPBind _ (Right _) _"
-     in sepSemi (located' p_ipBind) xs
+    sepSemi (located' p_ipBind) xs
   EmptyLocalBinds _ -> return ()
+  where
+    switchLayoutAnchor = \case
+      EpAnn {anns = AnnList {al_anchor = Just Anchor {anchor}}} ->
+        switchLayout [RealSrcSpan anchor Nothing]
+      _ -> id
 
 p_lhsFieldLabel :: Located (HsFieldLabel GhcPs) -> R ()
 p_lhsFieldLabel =

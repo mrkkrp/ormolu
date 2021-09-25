@@ -322,25 +322,15 @@ tyVarToType = \case
 tyVarsToTyPats :: LHsQTyVars GhcPs -> HsTyPats GhcPs
 tyVarsToTyPats HsQTvs {..} = HsValArg . fmap tyVarToType <$> hsq_explicit
 
-class ToForAllTelescope flag where
-  toForAllTelescope :: [LHsTyVarBndr flag GhcPs] -> HsForAllTelescope GhcPs
-
--- TODO this case is not necessary right now
-instance ToForAllTelescope () where
-  toForAllTelescope = mkHsForAllVisTele EpAnnNotUsed
-
-instance ToForAllTelescope Specificity where
-  toForAllTelescope = mkHsForAllInvisTele EpAnnNotUsed
-
+-- could be generalized to also handle () instead of Specificity
 hsOuterTyVarBndrsToHsType ::
-  ToForAllTelescope flag =>
-  HsOuterTyVarBndrs flag GhcPs ->
+  HsOuterTyVarBndrs Specificity GhcPs ->
   LHsType GhcPs ->
   HsType GhcPs
 hsOuterTyVarBndrsToHsType obndrs ty = case obndrs of
   HsOuterImplicit NoExtField -> unLoc ty
   HsOuterExplicit _ bndrs ->
-    HsForAllTy NoExtField (toForAllTelescope bndrs) ty
+    HsForAllTy NoExtField (mkHsForAllInvisTele EpAnnNotUsed bndrs) ty
 
 lhsTypeToSigType :: LHsType GhcPs -> LHsSigType GhcPs
 lhsTypeToSigType ty =

@@ -204,7 +204,7 @@ p_completeSig ::
   Maybe (LocatedN RdrName) ->
   R ()
 p_completeSig cs' mty =
-  located (reLocA cs') $ \cs ->
+  located cs' $ \cs ->
     pragma "COMPLETE" . inci $ do
       sep commaDel p_rdrName cs
       forM_ mty $ \ty -> do

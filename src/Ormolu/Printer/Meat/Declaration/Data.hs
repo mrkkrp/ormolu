@@ -97,7 +97,7 @@ p_dataDecl style name tpats fixity HsDataDefn {..} = do
                 else sitcc
         sep s (sitcc' . located' (p_conDecl singleConstRec)) dd_cons
   unless (null dd_derivs) breakpoint
-  inci $ sep newline (located' p_hsDerivingClause . reLocA) dd_derivs
+  inci $ sep newline (located' p_hsDerivingClause) dd_derivs
 
 p_conDecl ::
   Bool ->
@@ -212,7 +212,6 @@ p_hsDerivingClause HsDerivingClause {..} = do
   txt "deriving"
   let derivingWhat = located deriv_clause_tys $ \case
         DctSingle NoExtField sigTy -> parens N $ located sigTy p_hsSigType
-        -- TODO xs empty case?
         DctMulti NoExtField sigTys ->
           parens N $
             sep

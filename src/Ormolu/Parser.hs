@@ -159,7 +159,7 @@ manualExts =
     LinearTypes, -- steals the (%) type operator in some cases
     OverloadedRecordDot, -- f.g parses differently
     OverloadedRecordUpdate -- breaks operator field updates: foo { (+) = 4 }
-    -- TODO is this a bug?
+    -- TODO is it a bug that OverloadedRecordUpdate does not support this?
   ]
 
 -- | Run a 'GHC.P' computation.

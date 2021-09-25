@@ -44,7 +44,7 @@ p_hsModule mstackHeader pragmas HsModule {..} = do
     case hsmodName of
       Nothing -> return ()
       Just hsmodName' -> do
-        located (reLocA hsmodName') $ \name -> do
+        located hsmodName' $ \name -> do
           forM_ hsmodHaddockModHeader (p_hsDocString Pipe True)
           p_hsmodName name
         breakpoint

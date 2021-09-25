@@ -10,11 +10,12 @@ module Ormolu.Utils
     notImplemented,
     showOutputable,
     splitDocString,
-    unSrcSpan,
     incSpanLine,
     separatedByBlank,
     separatedByBlankNE,
     onTheSameLine,
+    HasSrcSpan (..),
+    getLoc',
   )
 where
 
@@ -98,12 +99,6 @@ splitDocString docStr =
                 then dropSpace <$> xs
                 else xs
 
--- | Get 'RealSrcSpan' out of 'SrcSpan' if the span is “helpful”.
-unSrcSpan :: SrcSpan -> Maybe RealSrcSpan
-unSrcSpan = \case
-  RealSrcSpan r _ -> Just r
-  UnhelpfulSpan _ -> Nothing
-
 -- | Increment line number in a 'SrcSpan'.
 incSpanLine :: Int -> SrcSpan -> SrcSpan
 incSpanLine i = \case
@@ -122,8 +117,8 @@ incSpanLine i = \case
 separatedByBlank :: (a -> SrcSpan) -> a -> a -> Bool
 separatedByBlank loc a b =
   fromMaybe False $ do
-    endA <- srcSpanEndLine <$> unSrcSpan (loc a)
-    startB <- srcSpanStartLine <$> unSrcSpan (loc b)
+    endA <- srcSpanEndLine <$> srcSpanToRealSrcSpan (loc a)
+    startB <- srcSpanStartLine <$> srcSpanToRealSrcSpan (loc b)
     pure (startB - endA >= 2)
 
 -- | Do two declaration groups have a blank between them?
@@ -134,3 +129,15 @@ separatedByBlankNE loc a b = separatedByBlank loc (NE.last a) (NE.head b)
 onTheSameLine :: SrcSpan -> SrcSpan -> Bool
 onTheSameLine a b =
   isOneLineSpan (mkSrcSpan (srcSpanEnd a) (srcSpanStart b))
+
+class HasSrcSpan l where
+  loc' :: l -> SrcSpan
+
+instance HasSrcSpan SrcSpan where
+  loc' = id
+
+instance HasSrcSpan (SrcSpanAnn' ann) where
+  loc' = locA
+
+getLoc' :: HasSrcSpan l => GenLocated l a -> SrcSpan
+getLoc' = loc' . getLoc

@@ -37,7 +37,7 @@ p_ruleDecls (HsRules _ _ xs) =
 
 p_ruleDecl :: RuleDecl GhcPs -> R ()
 p_ruleDecl (HsRule _ ruleName activation tyvars ruleBndrs lhs rhs) = do
-  located (reLocA ruleName) p_ruleName
+  located ruleName p_ruleName
   space
   p_activation activation
   space

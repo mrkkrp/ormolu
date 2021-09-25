@@ -69,10 +69,10 @@ where
 import Control.Monad
 import Data.List (intersperse)
 import Data.Text (Text)
-import GHC.Parser.Annotation
 import GHC.Types.SrcLoc
 import Ormolu.Printer.Comments
 import Ormolu.Printer.Internal
+import Ormolu.Utils (HasSrcSpan (..))
 
 ----------------------------------------------------------------------------
 -- Basic
@@ -92,24 +92,27 @@ inciIf b m = if b then inci m else m
 -- 'Located' wrapper, it should be “discharged” with a corresponding
 -- 'located' invocation.
 located ::
+  HasSrcSpan l =>
   -- | Thing to enter
-  GenLocated (SrcSpanAnn' ann) a ->
+  GenLocated l a ->
   -- | How to render inner value
   (a -> R ()) ->
   R ()
-located (L (SrcSpanAnn _ (UnhelpfulSpan _)) a) f = f a
-located (L (SrcSpanAnn _ (RealSrcSpan l _)) a) f = do
-  spitPrecedingComments l
-  withEnclosingSpan l $
-    switchLayout [RealSrcSpan l Nothing] (f a)
-  spitFollowingComments l
+located (L l' a) f = case loc' l' of
+  UnhelpfulSpan _ -> f a
+  RealSrcSpan l _ -> do
+    spitPrecedingComments l
+    withEnclosingSpan l $
+      switchLayout [RealSrcSpan l Nothing] (f a)
+    spitFollowingComments l
 
 -- | A version of 'located' with arguments flipped.
 located' ::
+  HasSrcSpan l =>
   -- | How to render inner value
   (a -> R ()) ->
   -- | Thing to enter
-  GenLocated (SrcSpanAnn' ann) a ->
+  GenLocated l a ->
   R ()
 located' = flip located
 

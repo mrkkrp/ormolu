@@ -344,11 +344,11 @@ p_hsCmd' s = \case
     located form p_hsExpr
     unless (null cmds) $ do
       breakpoint
-      inci (sequence_ (intersperse breakpoint (located' p_hsCmdTop . reLocA <$> cmds)))
+      inci (sequence_ (intersperse breakpoint (located' p_hsCmdTop <$> cmds)))
   HsCmdArrForm _ form Infix _ [left, right] ->
     -- TODO remove relocA?Tree
-    let opTree = reLocATree $ OpBranch (cmdOpTree left) form (cmdOpTree right)
-     in p_cmdOpTree (reLocTree $ reassociateOpTree getOpName opTree)
+    let opTree = OpBranch (cmdOpTree left) form (cmdOpTree right)
+     in p_cmdOpTree (reassociateOpTree getOpName opTree)
   HsCmdArrForm _ _ Infix _ _ -> notImplemented "HsCmdArrForm"
   HsCmdApp _ cmd expr -> do
     located cmd (p_hsCmd' s)
@@ -556,7 +556,7 @@ p_hsRecField ::
   HsRecField' id (LHsExpr GhcPs) ->
   R ()
 p_hsRecField p_lbl HsRecField {..} = do
-  located (reLocA hsRecFieldLbl) p_lbl
+  located hsRecFieldLbl p_lbl
   unless hsRecPun $ do
     space
     equals
@@ -719,7 +719,7 @@ p_hsExpr' s = \case
   HsMultiIf _ guards -> do
     txt "if"
     breakpoint
-    inci . inci $ sep newline (located' (p_grhs RightArrow) . reLocA) guards
+    inci . inci $ sep newline (located' (p_grhs RightArrow)) guards
   HsLet _ localBinds e ->
     p_let p_hsExpr localBinds e
   HsDo _ ctx es -> do
@@ -831,7 +831,7 @@ p_hsExpr' s = \case
       breakpoint
     txt "->"
     placeHanging (cmdTopPlacement (unLoc e)) $
-      located (reLocA e) p_hsCmdTop
+      located e p_hsCmdTop
   HsStatic _ e -> do
     txt "static"
     breakpoint
@@ -1044,21 +1044,21 @@ p_pat = \case
       txt "-"
       negativeLiterals <- isExtensionEnabled NegativeLiterals
       when negativeLiterals space
-    located (reLocA v) (atom . ol_val)
+    located v (atom . ol_val)
   NPlusKPat _ n k _ _ _ -> sitcc $ do
     p_rdrName n
     breakpoint
     inci $ do
       txt "+"
       space
-      located (reLocA k) (atom . ol_val)
+      located k (atom . ol_val)
   SigPat _ pat HsPS {..} -> do
     located pat p_pat
     p_typeAscription (lhsTypeToSigType hsps_body)
 
 p_pat_hsRecField :: HsRecField' (FieldOcc GhcPs) (LPat GhcPs) -> R ()
 p_pat_hsRecField HsRecField {..} = do
-  located (reLocA hsRecFieldLbl) $ p_rdrName . rdrNameFieldOcc
+  located hsRecFieldLbl $ p_rdrName . rdrNameFieldOcc
   unless hsRecPun $ do
     space
     equals
@@ -1366,9 +1366,9 @@ cmdOpTree = \case
 
 p_cmdOpTree :: OpTree (LHsCmdTop GhcPs) (LHsExpr GhcPs) -> R ()
 p_cmdOpTree = \case
-  OpNode n -> located (reLocA n) p_hsCmdTop
+  OpNode n -> located n p_hsCmdTop
   OpBranch x op y -> do
-    let placement = opBranchPlacement cmdTopPlacement (reLocATree x) (reLocATree y)
+    let placement = opBranchPlacement cmdTopPlacement x y
     ub <- opBranchBraceStyle placement
     ub $ p_cmdOpTree x
     placeHanging placement $ do
@@ -1376,26 +1376,14 @@ p_cmdOpTree = \case
       space
       p_cmdOpTree y
 
--- TODO move? find workaround?
-reLocATree :: OpTree (Located a) op -> OpTree (LocatedAn ann a) op
-reLocATree = \case
-  OpNode n -> OpNode $ reLocA n
-  OpBranch x op y -> OpBranch (reLocATree x) op (reLocATree y)
-
--- TODO move? find workaround?
-
-reLocTree :: OpTree (LocatedAn ann a) op -> OpTree (Located a) op
-reLocTree = \case
-  OpNode n -> OpNode $ reLoc n
-  OpBranch x op y -> OpBranch (reLocTree x) op (reLocTree y)
-
 opBranchPlacement ::
+  HasSrcSpan l =>
   -- | Placement of nodes
   (ty -> Placement) ->
   -- | Left branch
-  OpTree (LocatedAn ann ty) op ->
+  OpTree (GenLocated l ty) op ->
   -- | Right branch
-  OpTree (LocatedAn ann ty) op ->
+  OpTree (GenLocated l ty) op ->
   Placement
 opBranchPlacement f x y
   -- If the beginning of the first argument and the second argument are on

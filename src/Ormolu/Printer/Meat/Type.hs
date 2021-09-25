@@ -130,7 +130,7 @@ p_hsType' multilineArgs docStyle = \case
   HsParTy _ t ->
     parens N (located t p_hsType)
   HsIParamTy _ n t -> sitcc $ do
-    located (reLocA n) atom
+    located n atom
     space
     txt "::"
     breakpoint
@@ -265,7 +265,7 @@ p_conDeclField ConDeclField {..} = do
   sitcc $
     sep
       commaDel
-      (located' (p_rdrName . rdrNameFieldOcc) . reLocA)
+      (located' (p_rdrName . rdrNameFieldOcc))
       cd_fld_names
   space
   txt "::"

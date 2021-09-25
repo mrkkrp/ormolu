@@ -42,7 +42,7 @@ p_famDecl style FamilyDecl {fdTyVars = HsQTvs {..}, ..} = do
     inci $ do
       sequence_ resultSig
       space
-      forM_ fdInjectivityAnn (located' p_injectivityAnn . reLocA)
+      forM_ fdInjectivityAnn (located' p_injectivityAnn)
   case mmeqs of
     Nothing -> return ()
     Just meqs -> do

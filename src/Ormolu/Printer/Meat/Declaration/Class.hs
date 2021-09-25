@@ -13,8 +13,6 @@ import Control.Monad
 import Data.Foldable
 import Data.Function (on)
 import Data.List (sortBy)
---import GHC.Core.Class
-
 import Data.Maybe
 import GHC.Hs
 import GHC.Types.Fixity

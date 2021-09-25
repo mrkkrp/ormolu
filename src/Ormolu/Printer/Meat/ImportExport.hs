@@ -49,7 +49,7 @@ p_hsmodImport ImportDecl {..} = do
     Just slit -> atom slit
   space
   inci $ do
-    located (reLocA ideclName) atom
+    located ideclName atom
     when
       (isImportDeclQualified ideclQualified && useQualifiedPost)
       (space >> txt "qualified")
@@ -59,7 +59,7 @@ p_hsmodImport ImportDecl {..} = do
         space
         txt "as"
         space
-        located (reLocA l) atom
+        located l atom
     space
     case ideclHiding of
       Nothing -> return ()
@@ -104,7 +104,7 @@ p_lie encLayout relativePos = \case
              in before ++ [txt ".."] ++ after
     p_comma
   IEModuleContents _ l1 -> do
-    located (reLocA l1) p_hsmodName
+    located l1 p_hsmodName
     p_comma
   IEGroup NoExtField n str -> do
     case relativePos of

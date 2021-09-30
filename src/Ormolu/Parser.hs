@@ -157,9 +157,7 @@ manualExts =
     NegativeLiterals, -- with this, `- 1` and `-1` have differing AST
     LexicalNegation, -- implies NegativeLiterals
     LinearTypes, -- steals the (%) type operator in some cases
-    OverloadedRecordDot, -- f.g parses differently
-    OverloadedRecordUpdate -- breaks operator field updates: foo { (+) = 4 }
-    -- TODO is it a bug that OverloadedRecordUpdate does not support this?
+    OverloadedRecordDot -- f.g parses differently
   ]
 
 -- | Run a 'GHC.P' computation.

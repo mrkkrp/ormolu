@@ -32,7 +32,7 @@ import Data.Text (Text)
 import qualified Data.Text as Text
 import Data.Void
 import GHC.Data.Bag (bagToList)
-import GHC.Data.FastString (FastString)
+import GHC.Data.FastString (FastString, lengthFS)
 import GHC.Hs
 import GHC.LanguageExtensions.Type (Extension (NegativeLiterals))
 import GHC.Parser.CharClass (is_space)
@@ -543,10 +543,21 @@ p_hsLocalBinds = \case
       _ -> id
 
 p_lhsFieldLabel :: Located (HsFieldLabel GhcPs) -> R ()
-p_lhsFieldLabel =
-  -- We can ignore the locs as RecordDot-like fields are
-  -- always of the form a.b.c without newlines etc.
-  atom @FastString . unLoc . hflLabel . unLoc
+p_lhsFieldLabel = located' $ p_lFieldLabelString . hflLabel
+  where
+    p_lFieldLabelString (L s fs) = parensIfOp . atom @FastString $ fs
+      where
+        -- HACK For OverloadedRecordUpdate:
+        -- In operator field updates (i.e. `f {(+) = 1}`), we don't have
+        -- information whether parens are necessary. As a workaround,
+        -- we look if the RealSrcSpan is bigger than the string fs.
+        parensIfOp
+          | isOneLineSpan s,
+            Just realS <- srcSpanToRealSrcSpan s,
+            let spanLength = srcSpanEndCol realS - srcSpanStartCol realS,
+            lengthFS fs < spanLength =
+            parens N
+          | otherwise = id
 
 p_fieldLabels :: [Located (HsFieldLabel GhcPs)] -> R ()
 p_fieldLabels flss =

@@ -1,0 +1,17 @@
+{
+    "name": "ormolu-live",
+    "version": "0.0.0",
+    "scripts": {
+        "serve": "npx parcel assets/index-dev.html",
+        "cp-wasm": "cp wasm/dist/OrmoluLive.wasm dist/",
+        "bundle": "rm -rf dist && spago build --purs-args '--codegen corefn' && zephyr -f Main.main && npx parcel build assets/index.html --no-source-maps --no-scope-hoist --public-url '.' && npm run cp-wasm"
+    },
+    "devDependencies": {
+        "@parcel/transformer-sass": "^2.0.0-rc.0",
+        "parcel": "^2.0.0-rc.0",
+        "sass": "1.37.5"
+    },
+    "dependencies": {
+        "bulma": "^0.9.3"
+    }
+}

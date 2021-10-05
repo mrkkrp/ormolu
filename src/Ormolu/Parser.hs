@@ -157,7 +157,8 @@ manualExts =
     NegativeLiterals, -- with this, `- 1` and `-1` have differing AST
     LexicalNegation, -- implies NegativeLiterals
     LinearTypes, -- steals the (%) type operator in some cases
-    OverloadedRecordDot -- f.g parses differently
+    OverloadedRecordDot, -- f.g parses differently
+    OverloadedRecordUpdate -- qualified fields are not supported
   ]
 
 -- | Run a 'GHC.P' computation.

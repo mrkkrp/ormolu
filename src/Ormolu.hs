@@ -33,6 +33,7 @@ import Ormolu.Parser.Result
 import Ormolu.Printer
 import Ormolu.Utils (showOutputable)
 import Ormolu.Utils.IO
+import System.FilePath
 
 -- | Format a 'String', return formatted version as 'Text'.
 --
@@ -47,7 +48,7 @@ import Ormolu.Utils.IO
 ormolu ::
   MonadIO m =>
   -- | Ormolu configuration
-  Config RegionIndices ->
+  Config () RegionIndices ->
   -- | Location of source file
   FilePath ->
   -- | Input to format
@@ -100,7 +101,7 @@ ormolu cfgWithIndices path str = do
 ormoluFile ::
   MonadIO m =>
   -- | Ormolu configuration
-  Config RegionIndices ->
+  Config () RegionIndices ->
   -- | Location of source file
   FilePath ->
   -- | Resulting rendition
@@ -112,7 +113,7 @@ ormoluFile cfg path =
 ormoluStdin ::
   MonadIO m =>
   -- | Ormolu configuration
-  Config RegionIndices ->
+  Config () RegionIndices ->
   -- | Resulting rendition
   m Text
 ormoluStdin cfg =
@@ -125,7 +126,7 @@ ormoluStdin cfg =
 parseModule' ::
   MonadIO m =>
   -- | Ormolu configuration
-  Config RegionDeltas ->
+  Config () RegionDeltas ->
   -- | How to obtain 'OrmoluException' to throw when parsing fails
   (GHC.SrcSpan -> String -> OrmoluException) ->
   -- | File name to use in errors
@@ -134,7 +135,16 @@ parseModule' ::
   String ->
   m ([GHC.Warn], [SourceSnippet])
 parseModule' cfg mkException path str = do
-  (warnings, r) <- parseModule cfg path str
+  (warnings, r) <-
+    parseModule
+      cfg
+        { cfgHInputType = case cfgHInputType cfg of
+            AutoDetect _ -> detectInputType path
+            HModule -> HModule
+            HSig -> HSig
+        }
+      path
+      str
   case r of
     Left (spn, err) -> liftIO $ throwIO (mkException spn err)
     Right x -> return (warnings, x)
@@ -146,3 +156,8 @@ showWarn (GHC.Warn reason l) =
     [ showOutputable reason,
       showOutputable l
     ]
+
+detectInputType :: FilePath -> HInputType autoDetect
+detectInputType path
+  | takeExtension path == ".hsig" = HSig
+  | otherwise = HModule

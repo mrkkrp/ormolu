@@ -105,7 +105,7 @@ p_lie encLayout relativePos = \case
              in before ++ [txt ".."] ++ after
     p_comma
   IEModuleContents NoExtField l1 -> do
-    located l1 p_hsmodName
+    located l1 (p_hsmodLikeName "module")
     p_comma
   IEGroup NoExtField n str -> do
     case relativePos of

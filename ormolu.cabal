@@ -47,6 +47,7 @@ library
         Ormolu.Printer.Combinators
         Ormolu.Printer.Comments
         Ormolu.Printer.Internal
+        Ormolu.Printer.Meat.Backpack
         Ormolu.Printer.Meat.Common
         Ormolu.Printer.Meat.Declaration
         Ormolu.Printer.Meat.Declaration.Annotation

@@ -40,12 +40,13 @@ import Ormolu.Parser.Result
 import Ormolu.Processing.Common
 import Ormolu.Processing.Preprocess
 import Ormolu.Utils (incSpanLine)
+import Data.Void
 
 -- | Parse a complete module from string.
 parseModule ::
   MonadIO m =>
   -- | Ormolu configuration
-  Config RegionDeltas ->
+  Config Void RegionDeltas ->
   -- | File name (only for source location annotations)
   FilePath ->
   -- | Input for parser
@@ -54,7 +55,7 @@ parseModule ::
     ( [GHC.Warn],
       Either (SrcSpan, String) [SourceSnippet]
     )
-parseModule config@Config {..} path rawInput = liftIO $ do
+parseModule  config@Config {..} path rawInput = liftIO $ do
   -- It's important that 'setDefaultExts' is done before
   -- 'parsePragmasIntoDynFlags', because otherwise we might enable an
   -- extension that was explicitly disabled in the file.
@@ -82,12 +83,12 @@ parseModule config@Config {..} path rawInput = liftIO $ do
 
 parseModuleSnippet ::
   MonadIO m =>
-  Config RegionDeltas ->
+  Config Void RegionDeltas ->
   DynFlags ->
   FilePath ->
   String ->
   m (Either (SrcSpan, String) ParseResult)
-parseModuleSnippet Config {..} dynFlags path rawInput = liftIO $ do
+parseModuleSnippet  Config {..} dynFlags path rawInput = liftIO $ do
   let (input, indent) = removeIndentation . linesInRegion cfgRegion $ rawInput
   let useRecordDot =
         "record-dot-preprocessor" == pgm_F dynFlags
@@ -102,12 +103,14 @@ parseModuleSnippet Config {..} dynFlags path rawInput = liftIO $ do
               err : _ ->
                 -- Show instance returns a short error message
                 Just (fixupErrSpan (errMsgSpan err), show err)
-      r = case runParser GHC.parseModule dynFlags path input of
+      -- executes the right parseXXX function
+      -- wrap the GHC.POk pstate (returnV) -> GHC.POk pstate ParsedSource
+      r parseThing = case runParser parseThing dynFlags path input of
         GHC.PFailed pstate ->
           case pStateErrors pstate of
             Just err -> Left err
             Nothing -> error "PFailed does not have an error"
-        GHC.POk pstate (L _ hsModule) ->
+        GHC.POk pstate thing ->
           case pStateErrors pstate of
             -- Some parse errors (pattern/arrow syntax in expr context)
             -- do not cause a parse error, but they are replaced with "_"
@@ -119,7 +122,7 @@ parseModuleSnippet Config {..} dynFlags path rawInput = liftIO $ do
                     mkCommentStream input pstate
                in Right
                     ParseResult
-                      { prParsedSource = hsModule,
+                      { prParsedSource = thing,
                         prAnns = mkAnns pstate,
                         prStackHeader = stackHeader,
                         prPragmas = pragmas,
@@ -128,7 +131,9 @@ parseModuleSnippet Config {..} dynFlags path rawInput = liftIO $ do
                         prExtensions = GHC.extensionFlags dynFlags,
                         prIndent = indent
                       }
-  return r
+  return . r $ case cfgHInputType of
+    HModule -> ParsedModule <$> GHC.parseModule
+    HSig -> ParsedSig <$> GHC.parseBackpack
 
 -- | Enable all language extensions that we think should be enabled by
 -- default for ease of use.

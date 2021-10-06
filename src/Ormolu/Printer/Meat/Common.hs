@@ -4,7 +4,7 @@
 -- | Rendering of commonly useful bits.
 module Ormolu.Printer.Meat.Common
   ( FamilyStyle (..),
-    p_hsmodName,
+    p_hsmodLikeName,
     p_ieWrappedName,
     p_rdrName,
     doesNotNeedExtraParens,
@@ -18,6 +18,7 @@ where
 
 import Control.Monad
 import Data.List (isPrefixOf)
+import Data.Text (Text)
 import qualified Data.Text as T
 import GHC.Hs.Doc
 import GHC.Hs.ImpExp
@@ -28,6 +29,7 @@ import GHC.Types.Name.Occurrence (OccName (..))
 import GHC.Types.Name.Reader
 import GHC.Types.SrcLoc
 import GHC.Unit.Module.Name
+import GHC.Utils.Outputable (Outputable)
 import Ormolu.Printer.Combinators
 import Ormolu.Utils
 
@@ -38,9 +40,9 @@ data FamilyStyle
   | -- | Top-level declarations
     Free
 
-p_hsmodName :: ModuleName -> R ()
-p_hsmodName mname = do
-  txt "module"
+p_hsmodLikeName :: Outputable a => Text -> a -> R ()
+p_hsmodLikeName prefix mname = do
+  txt prefix
   space
   atom mname
 

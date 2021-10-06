@@ -5,6 +5,7 @@
 -- | Rendering of modules.
 module Ormolu.Printer.Meat.Module
   ( p_hsModule,
+    p_hsModuleLike,
   )
 where
 
@@ -21,6 +22,7 @@ import Ormolu.Printer.Meat.Declaration
 import Ormolu.Printer.Meat.Declaration.Warning
 import Ormolu.Printer.Meat.ImportExport
 import Ormolu.Printer.Meat.Pragma
+import Data.Text(Text)
 
 -- | Render a module.
 p_hsModule ::
@@ -31,7 +33,19 @@ p_hsModule ::
   -- | AST to print
   HsModule ->
   R ()
-p_hsModule mstackHeader pragmas HsModule {..} = do
+p_hsModule = p_hsModuleLike id "module"
+
+p_hsModuleLike ::
+   (R () -> R ()) ->
+  Text ->
+  -- | Stack header
+  Maybe (RealLocated Comment) ->
+  -- | Pragmas and the associated comments
+  [([RealLocated Comment], Pragma)] ->
+  -- | AST to print
+  HsModule ->
+  R ()
+p_hsModuleLike f namePrefix mstackHeader pragmas HsModule {..} = do
   let deprecSpan = maybe [] (\(L s _) -> [s]) hsmodDeprecMessage
       exportSpans = maybe [] (\(L s _) -> [s]) hsmodExports
   switchLayout (deprecSpan <> exportSpans) $ do
@@ -46,7 +60,7 @@ p_hsModule mstackHeader pragmas HsModule {..} = do
       Just hsmodName' -> do
         located hsmodName' $ \name -> do
           forM_ hsmodHaddockModHeader (p_hsDocString Pipe True)
-          p_hsmodName name
+          p_hsmodLikeName namePrefix name
         breakpoint
         forM_ hsmodDeprecMessage $ \w -> do
           located' p_moduleWarning w
@@ -60,9 +74,10 @@ p_hsModule mstackHeader pragmas HsModule {..} = do
         txt "where"
         newline
     newline
-    forM_ (normalizeImports hsmodImports) (located' p_hsmodImport)
-    newline
-    switchLayout (getLoc <$> hsmodDecls) $ do
-      p_hsDecls Free hsmodDecls
+    f $ do
+      forM_ (normalizeImports hsmodImports) (located' p_hsmodImport)
       newline
-      spitRemainingComments
+      switchLayout (getLoc <$> hsmodDecls) $ do
+        p_hsDecls Free hsmodDecls
+        newline
+        spitRemainingComments

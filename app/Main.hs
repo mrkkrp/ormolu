@@ -17,6 +17,7 @@ import Data.Version (showVersion)
 import Development.GitRev
 import Options.Applicative
 import Ormolu
+import Ormolu.Config (HInputType (..))
 import Ormolu.Diff.Text (diffText, printTextDiff)
 import Ormolu.Parser (manualExts)
 import Ormolu.Terminal
@@ -60,7 +61,7 @@ formatOne ::
   -- | Mode of operation
   Mode ->
   -- | Configuration
-  Config RegionIndices ->
+  Config () RegionIndices ->
   -- | File to format or stdin as 'Nothing'
   Maybe FilePath ->
   IO ExitCode
@@ -136,7 +137,7 @@ data Opts = Opts
   { -- | Mode of operation
     optMode :: !Mode,
     -- | Ormolu 'Config'
-    optConfig :: !(Config RegionIndices),
+    optConfig :: !(Config () RegionIndices),
     -- | Options for respecting default-extensions from .cabal files
     optCabalDefaultExtensions :: CabalDefaultExtensionsOpts,
     -- | Haskell source files to format or stdin (when the list is empty)
@@ -231,7 +232,7 @@ cabalDefaultExtensionsParser =
         help "Path which will be used to find the .cabal file when using input from stdin"
       ]
 
-configParser :: Parser (Config RegionIndices)
+configParser :: Parser (Config () RegionIndices)
 configParser =
   Config
     <$> (fmap (fmap DynOption) . many . strOption . mconcat)
@@ -254,6 +255,15 @@ configParser =
       [ long "check-idempotence",
         short 'c',
         help "Fail if formatting is not idempotent"
+      ]
+    <*> (option parseInputType . mconcat)
+      [ long "input-type",
+        short 't',
+        metavar "TYPE",
+        value $ AutoDetect (),
+        help $
+          "Set the type of the input; TYPE can be 'hmodule', 'hsig', or "
+            <> "'autodetect' (the default)"
       ]
     <*> (option parseColorMode . mconcat)
       [ long "color",
@@ -291,3 +301,10 @@ parseColorMode = eitherReader $ \case
   "always" -> Right Always
   "auto" -> Right Auto
   s -> Left $ "unknown color mode: " ++ s
+
+parseInputType :: ReadM (HInputType ())
+parseInputType = eitherReader $ \case
+  "hmodule" -> Right HModule
+  "hsig" -> Right HSig
+  "auto" -> Right $ AutoDetect ()
+  s -> Left $ "unknown input type: " ++ s

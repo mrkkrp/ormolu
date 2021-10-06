@@ -7,6 +7,7 @@ module Ormolu.Config
     ColorMode (..),
     RegionIndices (..),
     RegionDeltas (..),
+    HInputType (..),
     defaultConfig,
     regionIndicesToDeltas,
     DynOption (..),
@@ -17,8 +18,17 @@ where
 import qualified GHC.Types.SrcLoc as GHC
 import Ormolu.Terminal (ColorMode (..))
 
+-- | Haskell-related input types
+data HInputType autoDetect
+  = AutoDetect !autoDetect
+  -- | Consider the input as a regular Haskell module
+  | HModule
+  -- | Consider the input as a Backpack module signature
+  | HSig
+  deriving (Eq, Show)
+
 -- | Ormolu configuration.
-data Config region = Config
+data Config autoDetect region = Config
   { -- | Dynamic options to pass to GHC parser
     cfgDynOptions :: ![DynOption],
     -- | Do formatting faster but without automatic detection of defects
@@ -27,6 +37,8 @@ data Config region = Config
     cfgDebug :: !Bool,
     -- | Checks if re-formatting the result is idempotent
     cfgCheckIdempotence :: !Bool,
+    -- | How to parse the input (regular haskell module or Backpack file)
+    cfgHInputType :: !(HInputType autoDetect),
     -- | Whether to use colors and other features of ANSI terminals
     cfgColorMode :: !ColorMode,
     -- | Region selection
@@ -54,13 +66,14 @@ data RegionDeltas = RegionDeltas
   deriving (Eq, Show)
 
 -- | Default @'Config' 'RegionIndices'@.
-defaultConfig :: Config RegionIndices
+defaultConfig :: Config () RegionIndices
 defaultConfig =
   Config
     { cfgDynOptions = [],
       cfgUnsafe = False,
       cfgDebug = False,
       cfgCheckIdempotence = False,
+      cfgHInputType = AutoDetect (),
       cfgColorMode = Auto,
       cfgRegion =
         RegionIndices

@@ -1,0 +1,44 @@
+unit regex-indef where
+    signature Str where
+        data Str
+        -- foo
+        instance Eq Str
+        null :: Str -> Bool
+        -- bar
+        singleton :: Char -> Str
+        splits :: Str -> [(Str, Str)]
+        parts :: Str -> [[Str]]
+    module Regex where
+        import Prelude hiding (null)
+        import Str
+
+        -- | Doc comment example
+        data Reg = Eps
+                 | Sym Char
+                 | Alt Reg Reg
+                 | Seq Reg Reg
+                 | Rep Reg
+
+        accept :: Reg -> Str -> Bool
+        accept Eps       u = null u
+        accept (Sym c)   u = u == singleton c
+        accept (Alt p q) u = accept p u || accept q u
+        accept (Seq p q) u =
+            or [accept p u1 && accept q u2 | (u1, u2) <- splits u]
+        accept (Rep r) u =
+            or [and [accept r ui | ui <- ps] | ps <- parts u]
+    signature Foo
+
+    dependency Str
+    dependency regex-types (BlaBla, Titi as Toto)
+    dependency regex-indef[Str=str-string:Str,Elem=str-string:Elem,Elem=<Elem>] (Regex as Regex.String)
+    dependency regex-indef[Str=str-bytestring:Str] (Regex as Regex.ByteString)
+    module Main where
+        import Regex.Types
+        import qualified Regex.String
+        import qualified Regex.ByteString
+        nocs = Rep (Alt (Sym 'a') (Sym 'b'))
+        onec = Seq nocs (Sym 'c')
+        evencs = Seq (Rep (Seq onec onec)) nocs
+        main = print (Regex.String.accept evencs "acc") >>
+               print (Regex.ByteString.accept evencs "acc")    

@@ -56,8 +56,15 @@ diffParseResult
     } =
     matchIgnoringSrcSpans cstream0 cstream1
       <> matchIgnoringSrcSpans
-        hs0 {hsmodImports = normalizeImports (hsmodImports hs0)}
-        hs1 {hsmodImports = normalizeImports (hsmodImports hs1)}
+          (normalizeImports' hs0)
+          (normalizeImports' hs1)
+    where
+      normalizeImports' = \case
+        ParsedModule lmod ->
+           let f hmod = hmod {hsmodImports = normalizeImports (hsmodImports hmod)}
+            in ParsedModule $ fmap f lmod
+        -- TODO: normalize imports in case of Backpack signature file
+        pr -> pr
 
 -- | Compare two values for equality disregarding the following aspects:
 --

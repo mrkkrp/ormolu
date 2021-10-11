@@ -10,4 +10,4 @@ main = do { stuff } `finally` recover
 foo =
   do
     1
-    + 2
+   + 2

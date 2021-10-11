@@ -6,6 +6,7 @@
   if all guards together occupy more than one line. The body of each guard
   is also indented one level deeper in that case. [Issue
   712](https://github.com/tweag/ormolu/issues/712).
+* When a multiline `do` block is the left operand of a binary infix operator, then this operator is indented more (half indent) than the LHS `do` keyword, but less (half indent) than the LHS `do` body, so that it's more evident that the operator applies to the `do` block itself and not only to its last statement ([Issue 528](https://github.com/tweag/ormolu/issues/528))
 
 ## Ormolu 0.3.0.1
 

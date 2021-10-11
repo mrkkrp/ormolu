@@ -46,6 +46,9 @@ p_hsSig pragmas units = do
       IncludeD IncludeDecl {..} -> do
         txt "dependency"
         space
+        when idSignatureInclude $ do
+          txt "signature"
+          space
         let p_hsUnitId (HsUnitId name substs) = do
               atom name
               let p_subst (lModName, lModId) = do

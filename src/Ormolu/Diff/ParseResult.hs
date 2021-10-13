@@ -23,6 +23,7 @@ import GHC.Types.SrcLoc
 import Ormolu.Imports (normalizeImports)
 import Ormolu.Parser.CommentStream
 import Ormolu.Parser.Result
+import Ormolu.Printer.Meat.Backpack (updateModules)
 import Ormolu.Utils
 
 -- | Result of comparing two 'ParseResult's.
@@ -56,15 +57,13 @@ diffParseResult
     } =
     matchIgnoringSrcSpans cstream0 cstream1
       <> matchIgnoringSrcSpans
-          (normalizeImports' hs0)
-          (normalizeImports' hs1)
+        (normalizeImports' hs0)
+        (normalizeImports' hs1)
     where
       normalizeImports' = \case
-        ParsedModule lmod ->
-           let f hmod = hmod {hsmodImports = normalizeImports (hsmodImports hmod)}
-            in ParsedModule $ fmap f lmod
-        -- TODO: normalize imports in case of Backpack signature file
-        pr -> pr
+        ParsedModule lmod -> ParsedModule $ fmap f lmod
+        ParsedSig lunits -> ParsedSig $ updateModules lunits f
+      f hmod = hmod {hsmodImports = normalizeImports (hsmodImports hmod)}
 
 -- | Compare two values for equality disregarding the following aspects:
 --

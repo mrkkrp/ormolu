@@ -66,7 +66,7 @@ ormolu cfgWithIndices path str = do
   -- about not-yet-supported functionality) will be thrown later when we try
   -- to parse the rendered code back, inside of GHC monad wrapper which will
   -- lead to error messages presenting the exceptions as GHC bugs.
-  let !txt = printModule result0
+  let !txt = printSnippets result0
   when (not (cfgUnsafe cfg) || cfgCheckIdempotence cfg) $ do
     -- Parse the result of pretty-printing again and make sure that AST
     -- is the same as AST of original snippet module span positions.
@@ -88,7 +88,7 @@ ormolu cfgWithIndices path str = do
     -- Try re-formatting the formatted result to check if we get exactly
     -- the same output.
     when (cfgCheckIdempotence cfg) $
-      let txt2 = printModule result1
+      let txt2 = printSnippets result1
        in case diffText txt txt2 path of
             Nothing -> return ()
             Just diff ->

@@ -21,10 +21,10 @@ import Ormolu.Terminal (ColorMode (..))
 -- | Haskell-related input types
 data HInputType autoDetect
   = AutoDetect !autoDetect
-  -- | Consider the input as a regular Haskell module
-  | HModule
-  -- | Consider the input as a Backpack module signature
-  | HSig
+  | -- | Consider the input as a regular Haskell module
+    HModule
+  | -- | Consider the input as a Backpack module signature
+    HSig
   deriving (Eq, Show)
 
 -- | Ormolu configuration.

@@ -1,8 +1,8 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# OPTIONS_GHC -Wno-orphans #-}
 {-# LANGUAGE StandaloneDeriving #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 
 -- | A type for result of parsing.
 module Ormolu.Parser.Result
@@ -16,6 +16,7 @@ import Data.Data
 import Data.Text (Text)
 import GHC.Data.EnumSet (EnumSet)
 import GHC.Driver.Backpack.Syntax
+import GHC.Driver.Types
 import GHC.Hs
 import GHC.LanguageExtensions.Type
 import GHC.Types.SrcLoc
@@ -23,7 +24,6 @@ import GHC.Unit.Info
 import Ormolu.Parser.Anns
 import Ormolu.Parser.CommentStream
 import Ormolu.Parser.Pragma (Pragma)
-import GHC.Driver.Types
 
 -- | Either a 'ParseResult', or a raw snippet.
 data SourceSnippet = RawSnippet Text | ParsedSnippet ParseResult

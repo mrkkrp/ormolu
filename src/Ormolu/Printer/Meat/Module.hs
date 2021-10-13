@@ -10,6 +10,7 @@ module Ormolu.Printer.Meat.Module
 where
 
 import Control.Monad
+import Data.Text (Text)
 import GHC.Hs
 import GHC.Types.SrcLoc
 import Ormolu.Imports (normalizeImports)
@@ -22,7 +23,6 @@ import Ormolu.Printer.Meat.Declaration
 import Ormolu.Printer.Meat.Declaration.Warning
 import Ormolu.Printer.Meat.ImportExport
 import Ormolu.Printer.Meat.Pragma
-import Data.Text(Text)
 
 -- | Render a module.
 p_hsModule ::
@@ -36,7 +36,10 @@ p_hsModule ::
 p_hsModule = p_hsModuleLike id "module"
 
 p_hsModuleLike ::
-   (R () -> R ()) ->
+  -- | Rendering wrapper function used for the module body
+  (R () -> R ()) ->
+  -- | Name displayed before the 'where' keyword. It is often "module" or
+  -- "signature" (for Backpack signatures)
   Text ->
   -- | Stack header
   Maybe (RealLocated Comment) ->
@@ -45,7 +48,7 @@ p_hsModuleLike ::
   -- | AST to print
   HsModule ->
   R ()
-p_hsModuleLike f namePrefix mstackHeader pragmas HsModule {..} = do
+p_hsModuleLike rWrapperFunc namePrefix mstackHeader pragmas HsModule {..} = do
   let deprecSpan = maybe [] (\(L s _) -> [s]) hsmodDeprecMessage
       exportSpans = maybe [] (\(L s _) -> [s]) hsmodExports
   switchLayout (deprecSpan <> exportSpans) $ do
@@ -74,7 +77,7 @@ p_hsModuleLike f namePrefix mstackHeader pragmas HsModule {..} = do
         txt "where"
         newline
     newline
-    f $ do
+    rWrapperFunc $ do
       forM_ (normalizeImports hsmodImports) (located' p_hsmodImport)
       newline
       switchLayout (getLoc <$> hsmodDecls) $ do

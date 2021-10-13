@@ -16,6 +16,7 @@ import Data.Functor
 import qualified Data.List as L
 import qualified Data.List.NonEmpty as NE
 import Data.Ord (Down (Down))
+import Data.Void
 import GHC.Data.Bag (bagToList)
 import qualified GHC.Data.EnumSet as EnumSet
 import qualified GHC.Data.FastString as GHC
@@ -40,7 +41,6 @@ import Ormolu.Parser.Result
 import Ormolu.Processing.Common
 import Ormolu.Processing.Preprocess
 import Ormolu.Utils (incSpanLine)
-import Data.Void
 
 -- | Parse a complete module from string.
 parseModule ::
@@ -55,7 +55,7 @@ parseModule ::
     ( [GHC.Warn],
       Either (SrcSpan, String) [SourceSnippet]
     )
-parseModule  config@Config {..} path rawInput = liftIO $ do
+parseModule config@Config {..} path rawInput = liftIO $ do
   -- It's important that 'setDefaultExts' is done before
   -- 'parsePragmasIntoDynFlags', because otherwise we might enable an
   -- extension that was explicitly disabled in the file.
@@ -88,7 +88,7 @@ parseModuleSnippet ::
   FilePath ->
   String ->
   m (Either (SrcSpan, String) ParseResult)
-parseModuleSnippet  Config {..} dynFlags path rawInput = liftIO $ do
+parseModuleSnippet Config {..} dynFlags path rawInput = liftIO $ do
   let (input, indent) = removeIndentation . linesInRegion cfgRegion $ rawInput
   let useRecordDot =
         "record-dot-preprocessor" == pgm_F dynFlags

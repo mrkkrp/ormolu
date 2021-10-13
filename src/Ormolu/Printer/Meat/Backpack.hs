@@ -9,6 +9,7 @@ import Data.Foldable
 import qualified Data.Text as T
 import GHC.Driver.Backpack.Syntax
 import GHC.Driver.Types (HscSource (..))
+import GHC.Hs (HsModule)
 import GHC.Types.SrcLoc
 import GHC.Unit.Info
 import Ormolu.Parser.CommentStream
@@ -21,6 +22,21 @@ import Ormolu.Printer.Meat.Pragma
 
 txtDebug :: Show a => a -> R ()
 txtDebug = txt . T.pack . show
+
+-- | Mutates all the module declarations of the parsed Backpack file using the
+-- specified function
+updateModules ::
+  -- | Parsed Backpack file
+  [LHsUnit PackageName] ->
+  -- | Function to mutate each module
+  (HsModule -> HsModule) ->
+  [LHsUnit PackageName]
+updateModules lunits mut = fmap updateModules' lunits
+  where
+    updateModules' (L l unit@HsUnit {..}) = L l unit {hsunitBody = fmap updateDecl hsunitBody}
+    updateDecl (L l unitDecl) = L l $ case unitDecl of
+      DeclD source name (Just (L l' hmod)) -> DeclD source name (Just (L l' $ mut hmod))
+      _ -> unitDecl
 
 p_hsSig :: [([RealLocated Comment], Pragma)] -> [LHsUnit PackageName] -> R ()
 p_hsSig pragmas units = do
@@ -76,5 +92,4 @@ p_hsSig pragmas units = do
                   space
                   located lto atom
           parens N $ sep commaDel (located' p_renaming) renamings
-        -- TODO what does idSignatureInclude do?
         newline

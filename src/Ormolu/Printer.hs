@@ -8,7 +8,7 @@
 
 -- | Pretty-printer for Haskell AST.
 module Ormolu.Printer
-  ( printModule,
+  ( printSnippets,
   )
 where
 
@@ -19,26 +19,27 @@ import Ormolu.Printer.Combinators
 import Ormolu.Printer.Meat.Backpack
 import Ormolu.Printer.Meat.Module
 import Ormolu.Printer.SpanStream
+import Ormolu.Processing.Common (reindent)
 
--- | Render a module.
-printModule ::
+-- | Render one or more source snippets.
+printSnippets ::
   -- | Result of parsing
   [SourceSnippet] ->
   -- | Resulting rendition
   Text
-printModule = T.concat . fmap printSnippet
+printSnippets = T.concat . fmap printSnippet
   where
     printSnippet = \case
       ParsedSnippet ParseResult {..} ->
-        let runR' a p =
+        let runR' source printer =
               runR
-                (p a)
-                (mkSpanStream a)
+                (printer source)
+                (mkSpanStream source)
                 prCommentStream
                 prAnns
                 prUseRecordDot
                 prExtensions
-         in case prParsedSource of
+         in reindent prIndent $ case prParsedSource of
               ParsedModule hmod ->
                 runR' hmod . located' $
                   p_hsModule prStackHeader prPragmas

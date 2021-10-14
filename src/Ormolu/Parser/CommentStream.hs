@@ -38,7 +38,7 @@ import GHC.Parser.Annotation (EpAnnComments (..), getLocA)
 import qualified GHC.Parser.Annotation as GHC
 import GHC.Types.SrcLoc
 import Ormolu.Parser.Pragma
-import Ormolu.Utils (onTheSameLine, showOutputable, unSrcSpan)
+import Ormolu.Utils (onTheSameLine, showOutputable)
 
 ----------------------------------------------------------------------------
 -- Comment stream
@@ -90,7 +90,7 @@ mkCommentStream input hsModule =
         -- (everywhere where we use p_hsDoc{String,Name})
         validHaddockCommentSpans =
           S.fromList
-            . mapMaybe unSrcSpan
+            . mapMaybe srcSpanToRealSrcSpan
             . mconcat
               [ fmap getLoc . listify (only @LHsDocString),
                 fmap getLocA . listify (only @(LDocDecl GhcPs)),

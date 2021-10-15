@@ -11,12 +11,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
-            targetOs: Linux
+          # - os: ubuntu-latest
+          #   targetOs: Linux
           - os: macOS-latest
             targetOs: macOS
-          - os: ubuntu-latest
-            targetOs: Windows
+          # - os: ubuntu-latest
+          #   targetOs: Windows
     name: Build binary for ${{ matrix.targetOs }}
     runs-on: ${{ matrix.os }}
     steps:

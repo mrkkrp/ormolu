@@ -187,6 +187,7 @@ in {
       cp ${ormoluExe}/bin/ormolu $out/bin/ormolu
       chmod 755 $out/bin/ormolu
       dylibbundler -b \
+        -s "${pkgs.stdenv.cc.libc}/lib/"
         -x $out/bin/ormolu \
         -d $out/bin \
         -p '@executable_path'
